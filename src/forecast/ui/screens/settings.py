@@ -73,6 +73,10 @@ class SettingsScreen(ModalScreen[None]):
         if repo is not None:
             with contextlib.suppress(Exception):
                 await repo.set_preferences(prefs)
+        screen = getattr(app, "screen", None)
+        if screen is not None and hasattr(screen, "action_refresh"):
+            with contextlib.suppress(Exception):
+                app.run_worker(screen.action_refresh())
         self.dismiss()
 
     async def on_button_pressed(self, event) -> None:
