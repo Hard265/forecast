@@ -26,8 +26,13 @@ class WeeklyForecast(Container):
 
     WeeklyForecast DataTable {
         width: 100%;
+        padding: 1 0;
         scrollbar-size-vertical: 2;
         scrollbar-size-horizontal: 1;
+    }
+
+    WeeklyForecast DataTable > .datatable--cell {
+        padding: 0 1;
     }
 
     DataTable > .datatable--odd-row  { background: $surface; }
