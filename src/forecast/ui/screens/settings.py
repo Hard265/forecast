@@ -20,8 +20,7 @@ class SettingsScreen(ModalScreen[None]):
     BINDINGS = [("escape", "dismiss", "Close")]
 
     def compose(self) -> ComposeResult:
-        app = self.app
-        assert isinstance(app, ForecastApp)
+        app = cast("ForecastApp", self.app)
         prefs = app.preferences
         with Vertical(id="settings-container"):
             yield Label("Settings", id="settings-title")
