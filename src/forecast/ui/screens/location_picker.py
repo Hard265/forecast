@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, ListItem, ListView, Static
+from textual.widgets import Button, Input, Label, ListItem, ListView
 
 from forecast.application.config import Settings
 from forecast.application.repositories.user_preferences import UserPreferencesRepository
@@ -166,10 +167,8 @@ class LocationPickerScreen(Screen[None]):
             from forecast.infrastructure.composition_root import default_location
 
             loc = default_location(self._settings)
-            try:
+            with contextlib.suppress(Exception):
                 await self._prefs.set_primary_location(loc)
-            except Exception:
-                pass
             self.app.pop_screen()
             self.app.push_screen(MainScreen(self._service, loc))
 

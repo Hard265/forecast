@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 
 from textual.app import ComposeResult
@@ -5,6 +6,7 @@ from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, TabbedContent, TabPane
 
+from forecast.application.repositories.user_preferences import UserPreferencesRepository
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Location
 from forecast.ui.widgets.daily_forecast import DailyForecast
@@ -47,17 +49,15 @@ class MainScreen(Screen[None]):
         self._service = service
         self._location = location
         self._location_tabs: dict[str, str] = {}
-        self._prefs_repo = None
+        self._prefs_repo: UserPreferencesRepository | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with TabbedContent(initial="weather"):
-            with TabPane(self._location.name, id="weather"):
-                with VerticalScroll():
-                    yield WeatherHero(self._service, self._location)
-                    yield DailyForecast(self._service, self._location)
-                    yield WeeklyForecast(self._service, self._location)
-                    yield WeatherDetails(self._service, self._location)
+        with TabbedContent(initial="weather"), TabPane(self._location.name, id="weather"), VerticalScroll():
+            yield WeatherHero(self._service, self._location)
+            yield DailyForecast(self._service, self._location)
+            yield WeeklyForecast(self._service, self._location)
+            yield WeatherDetails(self._service, self._location)
             with TabPane("Pinned", id="pinned"):
                 yield PinPanel(self._service, self)
         yield Footer()
@@ -86,10 +86,8 @@ class MainScreen(Screen[None]):
             except Exception:
                 pass
             if persist and self._prefs_repo is not None:
-                try:
+                with contextlib.suppress(Exception):
                     self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
-                except Exception:
-                    pass
             return
         pane = TabPane(location.name, id=tab_id)
         hero = WeatherHero(self._service, location)
@@ -107,19 +105,15 @@ class MainScreen(Screen[None]):
             try:
                 tabs.add_pane(pane, before="pinned")
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     tabs.add_pane(pane)
-                except Exception:
-                    pass
             tabs.active = tab_id
             self._location_tabs[tab_id] = location.name
         except Exception:
             pass
         if persist and self._prefs_repo is not None:
-            try:
+            with contextlib.suppress(Exception):
                 self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
-            except Exception:
-                pass
 
     def action_refresh(self) -> None:
         """Re-fetch weather for the current screen by reloading it."""

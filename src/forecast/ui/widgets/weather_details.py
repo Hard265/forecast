@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 from textual.app import ComposeResult
 from textual.containers import Grid, Vertical
 from textual.widgets import Digits, Static
@@ -89,19 +91,15 @@ class WeatherDetails(Grid):
         daily = snapshot.forecast.daily[0] if snapshot.forecast.daily else None
 
         def set_val(card_id: str, text: str) -> None:
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one(f"#val-{card_id}", Digits).update(text)
-            except Exception:
-                try:
-                    self.query_one(f"#val-{card_id}", Static).update(text)
-                except Exception:
-                    pass
+                return
+            with contextlib.suppress(Exception):
+                self.query_one(f"#val-{card_id}", Static).update(text)
 
         def set_cmt(card_id: str, text: str) -> None:
-            try:
+            with contextlib.suppress(Exception):
                 self.query_one(f"#cmt-{card_id}", Static).update(text)
-            except Exception:
-                pass
 
         if daily is not None and daily.precipitation is not None:
             try:
@@ -165,7 +163,7 @@ class WeatherDetails(Grid):
         set_val("air", "Good")
         set_cmt("air", "Air quality acceptable")
 
-        if daily is not None:
+        if daily is not None and daily.sunrise is not None and daily.sunset is not None:
             set_val("sun", f"{daily.sunrise.strftime('%H:%M')}/{daily.sunset.strftime('%H:%M')}")
             set_cmt("sun", "Sunrise/Sunset")
         else:
