@@ -58,9 +58,13 @@ class WeatherHero(Vertical):
         current = snapshot.current
         daily = snapshot.forecast.daily[0] if snapshot.forecast.daily else None
 
-        self.query_one("#temperature", Digits).update(
-            f"{round(current.temperature.current)}°"
-        )
+        temp = current.temperature.current
+        prefs = getattr(self.app, "preferences", None)
+        if prefs is not None and prefs.temperature_unit == "fahrenheit":
+            from forecast.application.units import celsius_to_fahrenheit
+
+            temp = celsius_to_fahrenheit(temp)
+        self.query_one("#temperature", Digits).update(f"{round(temp)}°")
 
         summary = current.conditions.description
         if daily is not None:

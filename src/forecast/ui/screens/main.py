@@ -14,12 +14,13 @@ from forecast.ui.widgets.pin_panel import PinPanel
 from forecast.ui.widgets.weather_details import WeatherDetails
 from forecast.ui.widgets.weather_hero import WeatherHero
 from forecast.ui.widgets.weekly_forecast import WeeklyForecast
+from forecast.ui.screens.settings import SettingsScreen
 
 
 class MainScreen(Screen[None]):
     TITLE = "Forecast"
 
-    BINDINGS = [("r", "refresh", "Refresh")]
+    BINDINGS = [("r", "refresh", "Refresh"), ("s", "settings", "Settings")]
 
     DEFAULT_CSS = """
     MainScreen {
@@ -143,3 +144,6 @@ class MainScreen(Screen[None]):
                 new_screen.add_location_tab(tab_loc, persist=False)
         self.app.pop_screen()
         self.app.push_screen(new_screen)
+
+    def action_settings(self) -> None:
+        self.app.push_screen(SettingsScreen())
