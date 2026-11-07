@@ -123,11 +123,6 @@ class MainScreen(Screen[None]):
 
     def action_refresh(self) -> None:
         """Re-fetch weather for the current screen by reloading it."""
-        try:
-            tabs = self.query_one(TabbedContent)
-            active = tabs.active
-        except Exception:
-            active = "weather"
         loc = self._location
         new_screen = MainScreen(self._service, loc)
         new_screen._prefs_repo = self._prefs_repo

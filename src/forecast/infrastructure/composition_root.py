@@ -89,7 +89,7 @@ def default_location(settings: Settings | None = None) -> Location:
 
 def get_data_dir() -> Path:
     """Return the writable data directory, creating it if necessary."""
-    data_dir = Path(os.environ.get("FORECAST_DATA_DIR", "data"))
+    data_dir = Path(os.environ.get("FORECAST_CACHE_DIR", os.environ.get("FORECAST_DATA_DIR", "data")))
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
 
