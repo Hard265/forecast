@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from pathlib import Path
 
@@ -91,11 +92,11 @@ class PinPanel(Vertical):
             self.notify(f"{location.name}: {round(current.temperature.current)}°")
         except Exception as exc:  # pragma: no cover - UI feedback
             self.notify(f"Failed: {exc}", severity="error")
-        if self._main_screen is not None and hasattr(self._main_screen, "add_location_tab"):
-            try:
+        if self._main_screen is not None and hasattr(
+            self._main_screen, "add_location_tab"
+        ):
+            with contextlib.suppress(Exception):
                 self._main_screen.add_location_tab(location)
-            except Exception:
-                pass
 
     def on_mount(self) -> None:
         self._apply_filter()
@@ -133,7 +134,6 @@ class PinPanel(Vertical):
             try:
                 location_list = self.query_one(LocationList)
                 location_list.locations = self._locations
-                location_list._nodes = []
                 for child in list(location_list.children):
                     child.remove()
                 for location in self._locations:

@@ -32,5 +32,18 @@ class OpenMeteoProvider:
     async def fetch_alerts(self, location: Location) -> tuple[WeatherAlert, ...]:
         return ()
 
+    async def fetch_snapshot(
+        self, location: Location
+    ) -> tuple[CurrentWeather, Forecast, tuple[WeatherAlert, ...]]:
+        """Fetch current, forecast, and alerts in a single upstream request."""
+        response = await self._client.get_weather(
+            location.coordinates.latitude,
+            location.coordinates.longitude,
+        )
+        current = self._mapper.to_current_weather(response, location)
+        forecast = self._mapper.to_forecast(response, location)
+        alerts = await self.fetch_alerts(location)
+        return current, forecast, alerts
+
     async def close(self) -> None:
         await self._client.close()

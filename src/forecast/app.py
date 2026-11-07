@@ -1,3 +1,5 @@
+import contextlib
+
 from textual.app import App
 from textual.binding import Binding
 
@@ -101,11 +103,7 @@ class ForecastApp(App[None]):
         """Release HTTP resources when the app shuts down."""
         provider = getattr(self._service._repository, "_provider", None)
         if provider is not None and hasattr(provider, "close"):
-            try:
+            with contextlib.suppress(Exception):
                 await provider.close()
-            except Exception:
-                pass
-        try:
+        with contextlib.suppress(Exception):
             await self._geocoding.close()
-        except Exception:
-            pass

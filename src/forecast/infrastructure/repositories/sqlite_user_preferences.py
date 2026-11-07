@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import aiosqlite
 
+from forecast.application.repositories.user_preferences import UserPreferencesRepository
 from forecast.domain.models.location import Coordinates, Location
 from forecast.domain.models.preferences import UserPreferences
-from forecast.application.repositories.user_preferences import UserPreferencesRepository
 
 
 class SqliteUserPreferencesRepository(UserPreferencesRepository):
@@ -93,7 +92,7 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
     async def set_primary_location(self, location: Location) -> None:
         await self.initialize()
         loc_id = f"{location.name.lower()}:{location.country.lower()}:{location.coordinates.latitude:.4f}:{location.coordinates.longitude:.4f}"
-        created_at = datetime.now(timezone.utc).isoformat()
+        created_at = datetime.now(UTC).isoformat()
         async with aiosqlite.connect(self._database_path) as db:
             await db.execute(
                 """
@@ -176,7 +175,9 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
             if existing:
                 await db.commit()
                 return
-            async with db.execute("SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM opened_location_tabs") as cur:
+            async with db.execute(
+                "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM opened_location_tabs"
+            ) as cur:
                 row = await cur.fetchone()
             pos = row["next_pos"] if row else 0
             await db.execute(

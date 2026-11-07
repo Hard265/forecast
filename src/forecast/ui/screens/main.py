@@ -1,8 +1,12 @@
+import contextlib
+import hashlib
+
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, TabbedContent, TabPane
 
+from forecast.application.repositories.user_preferences import UserPreferencesRepository
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Location
 from forecast.ui.widgets.daily_forecast import DailyForecast
@@ -14,6 +18,8 @@ from forecast.ui.widgets.weekly_forecast import WeeklyForecast
 
 class MainScreen(Screen[None]):
     TITLE = "Forecast"
+
+    BINDINGS = [("r", "refresh", "Refresh")]
 
     DEFAULT_CSS = """
     MainScreen {
@@ -42,13 +48,13 @@ class MainScreen(Screen[None]):
         super().__init__()
         self._service = service
         self._location = location
-        self._location_tabs: dict[str, str] = {}
-        self._prefs_repo = None
+        self._location_tabs: dict[str, Location] = {}
+        self._prefs_repo: UserPreferencesRepository | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with TabbedContent(initial="weather"):
-            with TabPane(self._location.name, id="weather"):
+        with TabbedContent(initial="weather"):  # noqa: SIM117
+            with TabPane(self._location.name, id="weather"):  # noqa: SIM117
                 with VerticalScroll():
                     yield WeatherHero(self._service, self._location)
                     yield DailyForecast(self._service, self._location)
@@ -72,7 +78,9 @@ class MainScreen(Screen[None]):
             self.add_location_tab(loc, persist=False)
 
     def add_location_tab(self, location: Location, persist: bool = True) -> None:
-        tab_id = f"loc-{location.name.lower().replace(' ', '-')}-{hash((location.name, location.country, location.coordinates.latitude, location.coordinates.longitude)) % 100000}"
+        stable = f"{location.name}|{location.country}|{location.coordinates.latitude}|{location.coordinates.longitude}"
+        digest = hashlib.sha1(stable.encode()).hexdigest()[:8]
+        tab_id = f"loc-{location.name.lower().replace(' ', '-')}-{digest}"
         if tab_id in self._location_tabs:
             try:
                 tabs = self.query_one(TabbedContent)
@@ -80,10 +88,10 @@ class MainScreen(Screen[None]):
             except Exception:
                 pass
             if persist and self._prefs_repo is not None:
-                try:
-                    self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
-                except Exception:
-                    pass
+                with contextlib.suppress(Exception):
+                    self.run_worker(
+                        self._prefs_repo.add_opened_location(location), exclusive=False
+                    )
             return
         pane = TabPane(location.name, id=tab_id)
         hero = WeatherHero(self._service, location)
@@ -101,16 +109,37 @@ class MainScreen(Screen[None]):
             try:
                 tabs.add_pane(pane, before="pinned")
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     tabs.add_pane(pane)
-                except Exception:
-                    pass
             tabs.active = tab_id
-            self._location_tabs[tab_id] = location.name
+            self._location_tabs[tab_id] = location
         except Exception:
             pass
         if persist and self._prefs_repo is not None:
-            try:
-                self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
-            except Exception:
-                pass
+            with contextlib.suppress(Exception):
+                self.run_worker(
+                    self._prefs_repo.add_opened_location(location), exclusive=False
+                )
+
+    async def action_refresh(self) -> None:
+        """Re-fetch weather for the current screen by reloading it."""
+        try:
+            tabs = self.query_one(TabbedContent)
+            active_tab = tabs.active
+        except Exception:
+            active_tab = None
+        loc = (
+            self._location_tabs.get(active_tab, self._location)
+            if active_tab
+            else self._location
+        )
+        # Force a fresh upstream fetch so widgets do not reuse stale cache.
+        await self._service.get_weather_dashboard(loc, refresh=True)
+        new_screen = MainScreen(self._service, loc)
+        new_screen._prefs_repo = self._prefs_repo
+        # Restore any previously opened tabs.
+        for tab_loc in self._location_tabs.values():
+            if tab_loc is not loc:
+                new_screen.add_location_tab(tab_loc, persist=False)
+        self.app.pop_screen()
+        self.app.push_screen(new_screen)

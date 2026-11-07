@@ -109,8 +109,8 @@ async def test_repository_snapshot(location, open_meteo_provider):
     assert len(snapshot.forecast.hourly) == 24
     assert snapshot.alerts == ()
     assert snapshot.fetched_at is not None
-    # Snapshot fetches current + forecast (alerts do not hit the HTTP client).
-    assert len(calls) == 2
+    # A single upstream request now provides current + forecast.
+    assert len(calls) == 1
 
 
 async def test_repository_cache_keys_include_coordinates(location, open_meteo_provider):

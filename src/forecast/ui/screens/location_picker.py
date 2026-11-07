@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, ListItem, ListView, Static
+from textual.widgets import Button, Input, Label, ListItem, ListView
 
 from forecast.application.config import Settings
 from forecast.application.repositories.user_preferences import UserPreferencesRepository
@@ -102,7 +103,9 @@ class LocationPickerScreen(Screen[None]):
                     name=gr.name,
                     country=gr.country or "",
                     region=gr.admin1,
-                    coordinates=Coordinates(latitude=gr.latitude, longitude=gr.longitude),
+                    coordinates=Coordinates(
+                        latitude=gr.latitude, longitude=gr.longitude
+                    ),
                     timezone=gr.timezone or "UTC",
                 )
                 key = self._location_key(loc)
@@ -132,7 +135,9 @@ class LocationPickerScreen(Screen[None]):
         if event.input.id == "location-search":
             if self._debounce_task and not self._debounce_task.done():
                 self._debounce_task.cancel()
-            self._debounce_task = asyncio.create_task(self._debounced_search(event.value))
+            self._debounce_task = asyncio.create_task(
+                self._debounced_search(event.value)
+            )
 
     async def _debounced_search(self, value: str) -> None:
         await asyncio.sleep(0.3)
@@ -166,10 +171,8 @@ class LocationPickerScreen(Screen[None]):
             from forecast.infrastructure.composition_root import default_location
 
             loc = default_location(self._settings)
-            try:
+            with contextlib.suppress(Exception):
                 await self._prefs.set_primary_location(loc)
-            except Exception:
-                pass
             self.app.pop_screen()
             self.app.push_screen(MainScreen(self._service, loc))
 
