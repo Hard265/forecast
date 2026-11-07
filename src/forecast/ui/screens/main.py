@@ -121,9 +121,11 @@ class MainScreen(Screen[None]):
                     self._prefs_repo.add_opened_location(location), exclusive=False
                 )
 
-    def action_refresh(self) -> None:
+    async def action_refresh(self) -> None:
         """Re-fetch weather for the current screen by reloading it."""
         loc = self._location
+        # Force a fresh upstream fetch so widgets do not reuse stale cache.
+        await self._service.get_weather_dashboard(loc, refresh=True)
         new_screen = MainScreen(self._service, loc)
         new_screen._prefs_repo = self._prefs_repo
         self.app.pop_screen()

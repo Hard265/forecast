@@ -140,11 +140,16 @@ class DefaultWeatherRepository:
                 task = asyncio.create_task(self._provider.fetch_snapshot(location))
                 self._inflight[inflight_key] = task
         try:
-            return await task
+            return await asyncio.shield(task)
+        except BaseException:
+            # Keep cancellation local to this waiter; do not cancel the
+            # shared request or evict it for other waiters.
+            raise
         finally:
-            async with self._lock:
-                if self._inflight.get(inflight_key) is task:
-                    del self._inflight[inflight_key]
+            if task.done() and not task.cancelled():
+                async with self._lock:
+                    if self._inflight.get(inflight_key) is task:
+                        del self._inflight[inflight_key]
 
     def _current_cache_key(self, location: Location) -> str:
         return (
