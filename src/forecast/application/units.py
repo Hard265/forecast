@@ -26,12 +26,18 @@ def inches_to_mm(value: float) -> float:
 
 
 def temperature_symbol(prefs) -> str:
-    if prefs is not None and getattr(prefs, "temperature_unit", "celsius") == "fahrenheit":
+    if (
+        prefs is not None
+        and getattr(prefs, "temperature_unit", "celsius") == "fahrenheit"
+    ):
         return "°F"
     return "°C"
 
 
 def convert_temperature(value: float, prefs) -> float:
-    if prefs is not None and getattr(prefs, "temperature_unit", "celsius") == "fahrenheit":
+    if (
+        prefs is not None
+        and getattr(prefs, "temperature_unit", "celsius") == "fahrenheit"
+    ):
         return celsius_to_fahrenheit(value)
     return value
