@@ -82,6 +82,13 @@ class WeatherDetails(Grid):
                 card.compose_add_child(
                     Digits("--:--", classes="value", id="val-sunset")
                 )
+            elif card_id == "wind":
+                card.compose_add_child(
+                    Digits("--", classes="value", id="val-wind-speed")
+                )
+                card.compose_add_child(
+                    Digits("--°", classes="value", id="val-wind-dir")
+                )
             else:
                 card.compose_add_child(
                     Digits("--", classes="value", id=f"val-{card_id}")
@@ -156,7 +163,12 @@ class WeatherDetails(Grid):
 
             wind_val = kmh_to_ms(wind_val)
             wind_unit = "m/s"
-        set_val("wind", f"{round(wind_val)} {wind_unit} {wind_dir:.0f}°{gust_str}")
+        with contextlib.suppress(Exception):
+            self.query_one("#val-wind-speed", Digits).update(
+                f"{round(wind_val)} {wind_unit}{gust_str}"
+            )
+        with contextlib.suppress(Exception):
+            self.query_one("#val-wind-dir", Digits).update(f"{wind_dir:.0f}°")
         set_cmt(
             "wind", "Calm" if wind_spd < 12 else "Breezy" if wind_spd < 36 else "Windy"
         )
