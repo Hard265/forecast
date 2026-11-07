@@ -80,12 +80,15 @@ class DailyForecastItem(Vertical):
         yield Static("[bold]00°[/bold]", classes="temp")
 
     def populate(self, hourly) -> None:
+        from forecast.application.units import convert_temperature, temperature_symbol
+
         self._hourly = hourly
+        prefs = getattr(self.app, "preferences", None)
+        temp = convert_temperature(hourly.temperature, prefs)
+        sym = temperature_symbol(prefs)
         self.query_one(".time", Static).update(hourly.timestamp.strftime("%H:%M"))
         self.query_one(".icon", Static).update(self._icon_for(hourly.condition))
-        self.query_one(".temp", Static).update(
-            f"[bold]{round(hourly.temperature)}°[/bold]"
-        )
+        self.query_one(".temp", Static).update(f"[bold]{round(temp)}{sym}[/bold]")
 
     @staticmethod
     def _icon_for(condition) -> str:

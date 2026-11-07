@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import contextlib
-
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Digits, Static
@@ -56,32 +54,31 @@ class WeatherHero(Vertical):
             self._draw_error(str(exc))
 
     def _draw(self, snapshot) -> None:
+        from forecast.application.units import (
+            convert_temperature,
+            temperature_symbol,
+        )
+
         current = snapshot.current
         daily = snapshot.forecast.daily[0] if snapshot.forecast.daily else None
-
-        temp = current.temperature.current
         prefs = getattr(self.app, "preferences", None)
-        if prefs is not None and prefs.temperature_unit == "fahrenheit":
-            from forecast.application.units import celsius_to_fahrenheit
 
-            temp = celsius_to_fahrenheit(temp)
-        self.query_one("#temperature", Digits).update(f"{round(temp)}°")
+        temp = convert_temperature(current.temperature.current, prefs)
+        sym = temperature_symbol(prefs)
+        self.query_one("#temperature", Digits).update(f"{round(temp)}{sym}")
 
         summary = current.conditions.description
         if daily is not None:
-            summary += f"  {round(daily.temperature.minimum)}°/{round(daily.temperature.maximum)}°"
+            lo = convert_temperature(daily.temperature.minimum, prefs)
+            hi = convert_temperature(daily.temperature.maximum, prefs)
+            summary += f"  {round(lo)}{sym}/{round(hi)}{sym}"
         self.query_one("#summary", Static).update(f"[bold]{summary}[/bold]")
 
         details = (
-            f"feels like {round(current.temperature.feels_like)} "
+            f"feels like {round(convert_temperature(current.temperature.feels_like, prefs))}{sym} "
             f"{current.wind.direction:.0f}° wind {round(current.wind.speed)}"
         )
         self.query_one("#details", Static).update(details)
-
-        with contextlib.suppress(Exception):
-            self.app.screen.sub_title = (
-                f"Synced: {snapshot.fetched_at.strftime('%H:%M')}"
-            )
 
     def _draw_error(self, message: str) -> None:
         self.query_one("#temperature", Digits).update("--°")
