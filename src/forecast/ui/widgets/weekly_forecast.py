@@ -1,14 +1,9 @@
 from textual.app import ComposeResult
 from textual.containers import Container
-from textual.widgets import Button, DataTable, Static
+from textual.widgets import DataTable, Static
 
-
-ROWS = [
-    ("date", "status", "temp(Min/Max)"),
-    ("Today", "[bold]Cloudy[bold]", "18°/[bold]23°[bold]"),
-    ("Nov 6", "[bold]Overcast[bold]", "12°/[bold]20°[bold]"),
-    ("Nov 7", "[bold]Overcast[bold]", "15°/[bold]18°[bold]"),
-]
+from forecast.application.services.weather_service import DefaultWeatherService
+from forecast.domain.models.location import Location
 
 
 class WeeklyForecast(Container):
@@ -28,16 +23,33 @@ class WeeklyForecast(Container):
 
     DataTable > .datatable--odd-row  { background: $surface; }
     DataTable > * { background: $panel; }
-     """
+    """
+
+    def __init__(
+        self,
+        service: DefaultWeatherService,
+        location: Location,
+    ) -> None:
+        super().__init__()
+        self._service = service
+        self._location = location
 
     def compose(self) -> ComposeResult:
         yield Static("Next 7 days", id="label")
-        yield DataTable(
-            id="weekly-forecast",
-        )
+        yield DataTable(id="weekly-forecast")
 
-    def on_mount(self):
+    async def on_mount(self) -> None:
+        snapshot = await self._service.get_weather_dashboard(self._location)
         table = self.query_one(DataTable)
         table.cursor_type = "none"
-        table.add_columns(*ROWS[0])
-        table.add_rows(ROWS[1:])
+        table.add_columns("date", "status", "temp(Min/Max)")
+        for daily in snapshot.forecast.daily:
+            low = daily.temperature.minimum
+            high = daily.temperature.maximum
+            low_str = f"{round(low)}°" if low is not None else "—"
+            high_str = f"{round(high)}°" if high is not None else "—"
+            table.add_row(
+                daily.date.strftime("%a %d"),
+                daily.condition.description.title(),
+                f"{low_str}/{high_str}",
+            )

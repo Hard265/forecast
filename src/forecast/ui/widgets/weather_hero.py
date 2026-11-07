@@ -1,5 +1,9 @@
+from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Digits, Static
+
+from forecast.application.services.weather_service import DefaultWeatherService
+from forecast.domain.models.location import Location
 
 
 class WeatherHero(Vertical):
@@ -9,11 +13,40 @@ class WeatherHero(Vertical):
     }
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        service: DefaultWeatherService,
+        location: Location,
+    ) -> None:
         super().__init__()
+        self._service = service
+        self._location = location
         self.classes = "p-md"
 
-    def compose(self):
-        yield Digits("50°", id="temperature", classes="text-center")
-        yield Static("[bold]Cloudy 18°/30°[bold]", classes="text-center")
-        yield Static("feels like 28 North wind scale 1", classes="text-center")
+    def compose(self) -> ComposeResult:
+        yield Digits("00°", id="temperature", classes="text-center")
+        yield Static("", id="summary", classes="text-center")
+        yield Static("", id="details", classes="text-center")
+
+    async def on_mount(self) -> None:
+        snapshot = await self._service.get_weather_dashboard(self._location)
+        self._draw(snapshot)
+
+    def _draw(self, snapshot) -> None:
+        current = snapshot.current
+        daily = snapshot.forecast.daily[0] if snapshot.forecast.daily else None
+
+        self.query_one("#temperature", Digits).update(
+            f"{round(current.temperature.current)}°"
+        )
+
+        summary = current.conditions.description
+        if daily is not None:
+            summary += f"  {round(daily.temperature.minimum)}°/{round(daily.temperature.maximum)}°"
+        self.query_one("#summary", Static).update(f"[bold]{summary}[/bold]")
+
+        details = (
+            f"feels like {round(current.temperature.feels_like)} "
+            f"{current.wind.direction:.0f}° wind {round(current.wind.speed)}"
+        )
+        self.query_one("#details", Static).update(details)

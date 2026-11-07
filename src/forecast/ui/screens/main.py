@@ -1,22 +1,32 @@
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Header, TabPane, TabbedContent
+from textual.widgets import Footer, Header
 
-from forecast.ui.widgets.pin_panel import PinPanel
-from forecast.ui.widgets.weather_panel import WeatherPanel
+from forecast.application.services.weather_service import DefaultWeatherService
+from forecast.domain.models.location import Location
+from forecast.ui.widgets.daily_forecast import DailyForecast
+from forecast.ui.widgets.weather_hero import WeatherHero
+from forecast.ui.widgets.weekly_forecast import WeeklyForecast
 
 
 class MainScreen(Screen[None]):
     TITLE = "Forecast"
-    CSS_PATH = "./../styles/weather_hero.tcss"
+
+    def __init__(
+        self,
+        service: DefaultWeatherService,
+        location: Location,
+    ) -> None:
+        super().__init__()
+        self._service = service
+        self._location = location
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Vertical():
-            with TabbedContent():
-                with TabPane("Blantyre"):
-                    yield WeatherPanel()
-                with TabPane("+ Pin"):
-                    yield PinPanel()
+        yield Vertical(
+            WeatherHero(self._service, self._location),
+            DailyForecast(self._service, self._location),
+            WeeklyForecast(self._service, self._location),
+        )
         yield Footer()

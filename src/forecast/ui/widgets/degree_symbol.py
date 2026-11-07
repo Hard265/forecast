@@ -1,7 +1,7 @@
 from textual.widget import Widget
 
 
-class DegreeSymbol(Widge):
+class DegreeSymbol(Widget):
     """A two-line degree symbol, aligned to the top of the digits."""
 
     DEFAULT_CSS = """

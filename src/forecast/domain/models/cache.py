@@ -1,13 +1,17 @@
-from dataclasses import dataclass
-from datetime import datetime
+"""Generic cache record with expiry metadata."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 
+
 @dataclass(frozen=True, slots=True)
-class CacheRecord:
-    key: str
-    payload: bytes
-    created_at: datetime
+class CacheEntry[T]:
+    """A cache record holding a deserialized value with expiry metadata."""
+
+    data: T
+    fetched_at: datetime
     expires_at: datetime
 
     @property
