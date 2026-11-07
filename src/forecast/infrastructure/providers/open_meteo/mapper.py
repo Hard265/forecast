@@ -106,7 +106,7 @@ class OpenMeteoMapper:
             HourlyForecast(
                 timestamp=datetime.fromisoformat(t).replace(tzinfo=tz),
                 temperature=hourly.temperature_2m[i],
-                feels_like=hourly.temperature_2m[i],
+                feels_like=hourly.apparent_temperature[i],
                 condition=self._condition(
                     hourly.weather_code[i],
                     is_day=True,

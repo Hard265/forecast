@@ -25,6 +25,7 @@ class OpenMeteoClient:
     )
     HOURLY_PARAMS = (
         "temperature_2m",
+        "apparent_temperature",
         "relative_humidity_2m",
         "precipitation_probability",
         "precipitation",

@@ -36,6 +36,7 @@ SAMPLE_PAYLOAD: dict[str, Any] = {
     "hourly": {
         "time": [f"2026-11-07T{h:02d}:00" for h in range(24)],
         "temperature_2m": [26.0 + (h % 5) for h in range(24)],
+            "apparent_temperature": [26.0 + (h % 5) for h in range(24)],
         "relative_humidity_2m": [60.0] * 24,
         "precipitation_probability": [10.0 + h for h in range(24)],
         "precipitation": [0.0] * 24,
