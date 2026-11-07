@@ -17,6 +17,8 @@ from forecast.ui.widgets.weekly_forecast import WeeklyForecast
 class MainScreen(Screen[None]):
     TITLE = "Forecast"
 
+    BINDINGS = [("r", "refresh", "Refresh")]
+
     DEFAULT_CSS = """
     MainScreen {
         layout: vertical;
@@ -118,3 +120,16 @@ class MainScreen(Screen[None]):
                 self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
             except Exception:
                 pass
+
+    def action_refresh(self) -> None:
+        """Re-fetch weather for the current screen by reloading it."""
+        try:
+            tabs = self.query_one(TabbedContent)
+            active = tabs.active
+        except Exception:
+            active = "weather"
+        loc = self._location
+        new_screen = MainScreen(self._service, loc)
+        new_screen._prefs_repo = self._prefs_repo
+        self.app.pop_screen()
+        self.app.push_screen(new_screen)

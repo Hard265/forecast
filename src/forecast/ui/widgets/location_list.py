@@ -55,6 +55,6 @@ class LocationItem(ListItem):
     def compose(self) -> ComposeResult:
         with Horizontal(classes="row"):
             yield Label(self.location.name, classes="location-name")
-            yield Label(" ", classes="temperature")
+            yield Label("—", classes="temperature")
         with Horizontal(classes="row"):
             yield Label(self.location.timezone, classes="location-details")
