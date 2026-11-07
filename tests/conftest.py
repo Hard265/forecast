@@ -53,8 +53,8 @@ SAMPLE_PAYLOAD: dict[str, Any] = {
         "uv_index_max": [6.0],
         "precipitation_sum": [0.0],
         "precipitation_probability_max": [20.0],
-        "wind_speed_10m": [5.0],
-        "wind_direction_10m": [180.0],
+        "wind_speed_10m_max": [5.0],
+        "wind_direction_10m_dominant": [180.0],
     },
 }
 

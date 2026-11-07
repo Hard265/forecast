@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import DataTable, Static
 
 from forecast.application.services.weather_service import DefaultWeatherService
+from forecast.domain.errors import ForecastError
 from forecast.domain.models.location import Location
 
 
@@ -39,7 +42,11 @@ class WeeklyForecast(Container):
         yield DataTable(id="weekly-forecast")
 
     async def on_mount(self) -> None:
-        snapshot = await self._service.get_weather_dashboard(self._location)
+        try:
+            snapshot = await self._service.get_weather_dashboard(self._location)
+        except ForecastError:
+            return
+
         table = self.query_one(DataTable)
         table.cursor_type = "none"
         table.add_columns("date", "status", "temp(Min/Max)")

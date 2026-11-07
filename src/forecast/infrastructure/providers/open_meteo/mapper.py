@@ -124,8 +124,8 @@ class OpenMeteoMapper:
                     unit="mm",
                 ),
                 wind=Wind(
-                    speed=daily.wind_speed_10m[i],
-                    direction=daily.wind_direction_10m[i],
+                    speed=daily.wind_speed_10m_max[i],
+                    direction=daily.wind_direction_10m_dominant[i],
                     unit="km/h",
                 ),
                 sunrise=datetime.fromisoformat(daily.sunrise[i]).replace(tzinfo=tz),

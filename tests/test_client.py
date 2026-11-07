@@ -51,8 +51,8 @@ def _ok_payload():
             "uv_index_max": [1.0],
             "precipitation_sum": [0.0],
             "precipitation_probability_max": [0.0],
-            "wind_speed_10m": [1.0],
-            "wind_direction_10m": [1.0],
+            "wind_speed_10m_max": [1.0],
+            "wind_direction_10m_dominant": [1.0],
         },
     }
 
@@ -148,6 +148,17 @@ async def test_client_retries_on_timeout(no_sleep):
     with pytest.raises(WeatherProviderError):
         await client.get_weather(-15.78, 35.0)
     assert calls["n"] == 3
+
+
+async def test_client_rejects_invalid_daily_variable():
+    # Regression: Open-Meteo rejects `wind_speed_10m` as a daily variable;
+    # the correct daily field is `wind_speed_10m_max`.
+    def handler(req):
+        return httpx.Response(400, json={"error": True, "reason": "bad"})
+
+    client = _client_with(handler)
+    with pytest.raises(WeatherProviderError):
+        await client.get_weather(-15.78, 35.0)
 
 
 async def test_client_close_is_idempotent():

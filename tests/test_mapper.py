@@ -96,8 +96,8 @@ def test_mapper_unknown_weather_code(sample_payload, location):
             "uv_index_max": [1.0],
             "precipitation_sum": [0.0],
             "precipitation_probability_max": [0.0],
-            "wind_speed_10m": [1.0],
-            "wind_direction_10m": [1.0],
+            "wind_speed_10m_max": [1.0],
+            "wind_direction_10m_dominant": [1.0],
         },
     }
     dto = OpenMeteoResponseDTO.model_validate(payload)

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from textual.app import ComposeResult
 from textual.containers import Container, HorizontalScroll, Vertical
 from textual.widgets import Static
 
 from forecast.application.services.weather_service import DefaultWeatherService
+from forecast.domain.errors import ForecastError
 from forecast.domain.models.location import Location
 
 
@@ -47,10 +50,14 @@ class DailyForecast(Container):
                 yield DailyForecastItem(index)
 
     async def on_mount(self) -> None:
-        snapshot = await self._service.get_weather_dashboard(self._location)
-        for index, hourly in enumerate(snapshot.forecast.hourly[:24]):
-            item = self.query_one(f"#hour-{index}", DailyForecastItem)
-            item.populate(hourly)
+        try:
+            snapshot = await self._service.get_weather_dashboard(self._location)
+            for index, hourly in enumerate(snapshot.forecast.hourly[:24]):
+                item = self.query_one(f"#hour-{index}", DailyForecastItem)
+                item.populate(hourly)
+        except ForecastError:
+            # WeatherHero already surfaces the error; leave the strip empty.
+            pass
 
 
 class DailyForecastItem(Vertical):

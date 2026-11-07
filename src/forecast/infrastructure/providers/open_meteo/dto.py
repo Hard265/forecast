@@ -43,8 +43,8 @@ class OpenMeteoDailyDTO(BaseModel):
     uv_index_max: list[float]
     precipitation_sum: list[float]
     precipitation_probability_max: list[float]
-    wind_speed_10m: list[float]
-    wind_direction_10m: list[float]
+    wind_speed_10m_max: list[float]
+    wind_direction_10m_dominant: list[float]
 
 
 class OpenMeteoResponseDTO(BaseModel):

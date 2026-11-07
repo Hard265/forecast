@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Digits, Static
 
 from forecast.application.services.weather_service import DefaultWeatherService
+from forecast.domain.errors import ForecastError
 from forecast.domain.models.location import Location
 
 
@@ -29,8 +32,11 @@ class WeatherHero(Vertical):
         yield Static("", id="details", classes="text-center")
 
     async def on_mount(self) -> None:
-        snapshot = await self._service.get_weather_dashboard(self._location)
-        self._draw(snapshot)
+        try:
+            snapshot = await self._service.get_weather_dashboard(self._location)
+            self._draw(snapshot)
+        except ForecastError as exc:
+            self._draw_error(str(exc))
 
     def _draw(self, snapshot) -> None:
         current = snapshot.current
@@ -50,3 +56,8 @@ class WeatherHero(Vertical):
             f"{current.wind.direction:.0f}° wind {round(current.wind.speed)}"
         )
         self.query_one("#details", Static).update(details)
+
+    def _draw_error(self, message: str) -> None:
+        self.query_one("#temperature", Digits).update("--°")
+        self.query_one("#summary", Static).update("[bold]Weather unavailable[/bold]")
+        self.query_one("#details", Static).update(f"[red]{message}[/red]")

@@ -62,8 +62,8 @@ def _sample_payload():
             "uv_index_max": [6.0],
             "precipitation_sum": [0.0],
             "precipitation_probability_max": [20.0],
-            "wind_speed_10m": [5.0],
-            "wind_direction_10m": [180.0],
+            "wind_speed_10m_max": [5.0],
+            "wind_direction_10m_dominant": [180.0],
         },
     }
 
@@ -129,3 +129,36 @@ async def test_toggle_dark_binding(app):
         initial = app.theme
         await pilot.press("d")
         assert app.theme != initial
+
+
+async def test_weather_hero_handles_provider_error():
+    """The UI must not crash when the provider fails; it should render an error state."""
+
+    def handler(req):
+        return httpx.Response(400, json={"error": True, "reason": "bad"})
+
+    transport = httpx.MockTransport(handler)
+    client = OpenMeteoClient(base_url="https://api.open-meteo.com/v1/forecast")
+    client._client = httpx.AsyncClient(
+        base_url=client.BASE_URL,
+        transport=transport,
+        timeout=httpx.Timeout(10.0, connect=5.0),
+        headers={"User-Agent": "x"},
+    )
+    provider = OpenMeteoProvider(client=client)
+    cache = TieredWeatherCache(
+        memory=MemoryWeatherCache(),
+        persistent=MemoryWeatherCache(),
+    )
+    repo = DefaultWeatherRepository(provider=provider, cache=cache)
+    service = DefaultWeatherService(repo)
+
+    app = ForecastApp(service)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        # The app must still be running and the hero must show an error state.
+        assert app.screen is not None
+        digits = app.screen.query_one("#temperature", Digits)
+        assert digits.value == "--°"
+        summary = app.screen.query_one("#summary", Static)
+        assert "unavailable" in str(summary.content).lower()
