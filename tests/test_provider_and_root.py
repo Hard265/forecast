@@ -39,6 +39,7 @@ def _sample():
         "hourly": {
             "time": ["2026-01-01T00:00"],
             "temperature_2m": [1.0],
+            "apparent_temperature": [1.0],
             "relative_humidity_2m": [1.0],
             "precipitation_probability": [0.0],
             "precipitation": [0.0],

@@ -129,7 +129,9 @@ class WeatherDetails(Grid):
 
         wind_spd = round(current.wind.speed)
         wind_dir = getattr(current.wind, "direction", 0)
-        set_val("wind", f"{wind_spd} {current.wind.unit} {wind_dir:.0f}°")
+        gust = getattr(current.wind, "gust", None)
+        gust_str = f", gusts {round(gust)}" if gust is not None else ""
+        set_val("wind", f"{wind_spd} {current.wind.unit} {wind_dir:.0f}°{gust_str}")
         set_cmt(
             "wind", "Calm" if wind_spd < 12 else "Breezy" if wind_spd < 36 else "Windy"
         )
