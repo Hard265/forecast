@@ -48,7 +48,7 @@ class MainScreen(Screen[None]):
         super().__init__()
         self._service = service
         self._location = location
-        self._location_tabs: dict[str, str] = {}
+        self._location_tabs: dict[str, Location] = {}
         self._prefs_repo: UserPreferencesRepository | None = None
 
     def compose(self) -> ComposeResult:
@@ -112,7 +112,7 @@ class MainScreen(Screen[None]):
                 with contextlib.suppress(Exception):
                     tabs.add_pane(pane)
             tabs.active = tab_id
-            self._location_tabs[tab_id] = location.name
+            self._location_tabs[tab_id] = location
         except Exception:
             pass
         if persist and self._prefs_repo is not None:
@@ -123,10 +123,23 @@ class MainScreen(Screen[None]):
 
     async def action_refresh(self) -> None:
         """Re-fetch weather for the current screen by reloading it."""
-        loc = self._location
+        try:
+            tabs = self.query_one(TabbedContent)
+            active_tab = tabs.active
+        except Exception:
+            active_tab = None
+        loc = (
+            self._location_tabs.get(active_tab, self._location)
+            if active_tab
+            else self._location
+        )
         # Force a fresh upstream fetch so widgets do not reuse stale cache.
         await self._service.get_weather_dashboard(loc, refresh=True)
         new_screen = MainScreen(self._service, loc)
         new_screen._prefs_repo = self._prefs_repo
+        # Restore any previously opened tabs.
+        for tab_loc in self._location_tabs.values():
+            if tab_loc is not loc:
+                new_screen.add_location_tab(tab_loc, persist=False)
         self.app.pop_screen()
         self.app.push_screen(new_screen)
