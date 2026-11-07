@@ -25,7 +25,8 @@ class DailyForecast(Container):
     }
 
     DailyForecast > #precip-sparkline {
-        height: 1;
+        height: 3;
+        padding: 1 0;
         margin-bottom: 0;
     }
 
