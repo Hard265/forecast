@@ -92,7 +92,9 @@ class PinPanel(Vertical):
             self.notify(f"{location.name}: {round(current.temperature.current)}°")
         except Exception as exc:  # pragma: no cover - UI feedback
             self.notify(f"Failed: {exc}", severity="error")
-        if self._main_screen is not None and hasattr(self._main_screen, "add_location_tab"):
+        if self._main_screen is not None and hasattr(
+            self._main_screen, "add_location_tab"
+        ):
             with contextlib.suppress(Exception):
                 self._main_screen.add_location_tab(location)
 

@@ -78,7 +78,6 @@ class WeatherDetails(Grid):
             card.compose_add_child(Digits("--", classes="value", id=f"val-{card_id}"))
             card.compose_add_child(Static("", classes="comment", id=f"cmt-{card_id}"))
 
-
     async def on_mount(self) -> None:
         try:
             snapshot = await self._service.get_weather_dashboard(self._location)
@@ -106,7 +105,10 @@ class WeatherDetails(Grid):
                 p = daily.precipitation
                 val = getattr(p, "sum", None) or getattr(p, "amount", None) or 0.0
                 set_val("precip", f"{val:.1f} mm")
-                set_cmt("precip", "Light precipitation expected" if val < 2 else "Possible showers")
+                set_cmt(
+                    "precip",
+                    "Light precipitation expected" if val < 2 else "Possible showers",
+                )
             except Exception:
                 set_val("precip", "0.0 mm")
                 set_cmt("precip", "No precipitation")
@@ -115,7 +117,9 @@ class WeatherDetails(Grid):
                 p = current.precipitation
                 val = getattr(p, "amount", None) or 0.0
                 set_val("precip", f"{val:.1f} mm")
-                set_cmt("precip", "Dry conditions" if val == 0 else "Current precipitation")
+                set_cmt(
+                    "precip", "Dry conditions" if val == 0 else "Current precipitation"
+                )
             except Exception:
                 set_val("precip", "0.0 mm")
                 set_cmt("precip", "No precipitation")
@@ -126,7 +130,9 @@ class WeatherDetails(Grid):
         wind_spd = round(current.wind.speed)
         wind_dir = getattr(current.wind, "direction", 0)
         set_val("wind", f"{wind_spd} {current.wind.unit} {wind_dir:.0f}°")
-        set_cmt("wind", "Calm" if wind_spd < 12 else "Breezy" if wind_spd < 36 else "Windy")
+        set_cmt(
+            "wind", "Calm" if wind_spd < 12 else "Breezy" if wind_spd < 36 else "Windy"
+        )
 
         try:
             hum = round(getattr(current.atmospheric, "humidity", 0))
@@ -164,18 +170,34 @@ class WeatherDetails(Grid):
         set_cmt("air", "Air quality acceptable")
 
         if daily is not None and daily.sunrise is not None and daily.sunset is not None:
-            set_val("sun", f"{daily.sunrise.strftime('%H:%M')}/{daily.sunset.strftime('%H:%M')}")
+            set_val(
+                "sun",
+                f"{daily.sunrise.strftime('%H:%M')}/{daily.sunset.strftime('%H:%M')}",
+            )
             set_cmt("sun", "Sunrise/Sunset")
         else:
             set_val("sun", "--/--")
             set_cmt("sun", "")
 
-        feels = round(getattr(current.temperature, "feels_like", current.temperature.current))
+        feels = round(
+            getattr(current.temperature, "feels_like", current.temperature.current)
+        )
         set_val("feels", f"{feels}°")
-        set_cmt("feels", "Feels similar" if abs(feels - round(current.temperature.current)) < 2 else "Feels different")
+        set_cmt(
+            "feels",
+            "Feels similar"
+            if abs(feels - round(current.temperature.current)) < 2
+            else "Feels different",
+        )
 
         try:
-            press = round(getattr(current.atmospheric, "pressure", getattr(current.atmospheric, "msl", 1013)))
+            press = round(
+                getattr(
+                    current.atmospheric,
+                    "pressure",
+                    getattr(current.atmospheric, "msl", 1013),
+                )
+            )
             set_val("pressure", f"{press} hPa")
             set_cmt("pressure", "Normal pressure")
         except Exception:
@@ -183,7 +205,13 @@ class WeatherDetails(Grid):
             set_cmt("pressure", "")
 
         try:
-            cloud = round(getattr(current.atmospheric, "cloud_cover", getattr(current.atmospheric, "cloud", 0)))
+            cloud = round(
+                getattr(
+                    current.atmospheric,
+                    "cloud_cover",
+                    getattr(current.atmospheric, "cloud", 0),
+                )
+            )
             set_val("cloud", f"{cloud}%")
             if cloud < 20:
                 set_cmt("cloud", "Clear skies")

@@ -103,7 +103,9 @@ class LocationPickerScreen(Screen[None]):
                     name=gr.name,
                     country=gr.country or "",
                     region=gr.admin1,
-                    coordinates=Coordinates(latitude=gr.latitude, longitude=gr.longitude),
+                    coordinates=Coordinates(
+                        latitude=gr.latitude, longitude=gr.longitude
+                    ),
                     timezone=gr.timezone or "UTC",
                 )
                 key = self._location_key(loc)
@@ -133,7 +135,9 @@ class LocationPickerScreen(Screen[None]):
         if event.input.id == "location-search":
             if self._debounce_task and not self._debounce_task.done():
                 self._debounce_task.cancel()
-            self._debounce_task = asyncio.create_task(self._debounced_search(event.value))
+            self._debounce_task = asyncio.create_task(
+                self._debounced_search(event.value)
+            )
 
     async def _debounced_search(self, value: str) -> None:
         await asyncio.sleep(0.3)

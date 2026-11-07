@@ -1,4 +1,3 @@
-
 from forecast.application.repositories.weather_repository import WeatherRepository
 from forecast.domain.models.app import WeatherSnapshot
 from forecast.domain.models.current_weather import CurrentWeather

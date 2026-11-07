@@ -53,7 +53,11 @@ class MainScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with TabbedContent(initial="weather"), TabPane(self._location.name, id="weather"), VerticalScroll():
+        with (
+            TabbedContent(initial="weather"),
+            TabPane(self._location.name, id="weather"),
+            VerticalScroll(),
+        ):
             yield WeatherHero(self._service, self._location)
             yield DailyForecast(self._service, self._location)
             yield WeeklyForecast(self._service, self._location)
@@ -87,7 +91,9 @@ class MainScreen(Screen[None]):
                 pass
             if persist and self._prefs_repo is not None:
                 with contextlib.suppress(Exception):
-                    self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
+                    self.run_worker(
+                        self._prefs_repo.add_opened_location(location), exclusive=False
+                    )
             return
         pane = TabPane(location.name, id=tab_id)
         hero = WeatherHero(self._service, location)
@@ -113,7 +119,9 @@ class MainScreen(Screen[None]):
             pass
         if persist and self._prefs_repo is not None:
             with contextlib.suppress(Exception):
-                self.run_worker(self._prefs_repo.add_opened_location(location), exclusive=False)
+                self.run_worker(
+                    self._prefs_repo.add_opened_location(location), exclusive=False
+                )
 
     def action_refresh(self) -> None:
         """Re-fetch weather for the current screen by reloading it."""

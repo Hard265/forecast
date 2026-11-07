@@ -34,7 +34,9 @@ class DefaultWeatherRepository:
             raise ValueError("forecast_ttl_seconds must be positive")
         self._current_ttl = current_ttl_seconds
         self._forecast_ttl = forecast_ttl_seconds
-        self._inflight: dict[str, asyncio.Task[tuple[CurrentWeather, Forecast, tuple[WeatherAlert, ...]]]] = {}
+        self._inflight: dict[
+            str, asyncio.Task[tuple[CurrentWeather, Forecast, tuple[WeatherAlert, ...]]]
+        ] = {}
         self._lock = asyncio.Lock()
 
     async def get_current(
@@ -48,9 +50,13 @@ class DefaultWeatherRepository:
             cached = await self._cache.get(key)
             if cached is not None and not cached.is_expired:
                 return cached.data  # type: ignore[no-any-return]
-        current, forecast, _alerts = await self._fetch_snapshot(location, force_refresh=force_refresh)
+        current, forecast, _alerts = await self._fetch_snapshot(
+            location, force_refresh=force_refresh
+        )
         await self._cache.set(key, current, self._current_ttl)
-        await self._cache.set(self._forecast_cache_key(location), forecast, self._forecast_ttl)
+        await self._cache.set(
+            self._forecast_cache_key(location), forecast, self._forecast_ttl
+        )
         return current
 
     async def get_forecast(
@@ -64,8 +70,12 @@ class DefaultWeatherRepository:
             cached = await self._cache.get(key)
             if cached is not None and not cached.is_expired:
                 return cached.data  # type: ignore[no-any-return]
-        current, forecast, _alerts = await self._fetch_snapshot(location, force_refresh=force_refresh)
-        await self._cache.set(self._current_cache_key(location), current, self._current_ttl)
+        current, forecast, _alerts = await self._fetch_snapshot(
+            location, force_refresh=force_refresh
+        )
+        await self._cache.set(
+            self._current_cache_key(location), current, self._current_ttl
+        )
         await self._cache.set(key, forecast, self._forecast_ttl)
         return forecast
 
@@ -105,7 +115,9 @@ class DefaultWeatherRepository:
                 fetched_at=_now(),
             )
 
-        current, forecast, alerts = await self._fetch_snapshot(location, force_refresh=force_refresh)
+        current, forecast, alerts = await self._fetch_snapshot(
+            location, force_refresh=force_refresh
+        )
         await self._cache.set(current_key, current, self._current_ttl)
         await self._cache.set(forecast_key, forecast, self._forecast_ttl)
         return WeatherSnapshot(
@@ -125,9 +137,7 @@ class DefaultWeatherRepository:
         async with self._lock:
             task = self._inflight.get(inflight_key)
             if task is None or task.done():
-                task = asyncio.create_task(
-                    self._provider.fetch_snapshot(location)
-                )
+                task = asyncio.create_task(self._provider.fetch_snapshot(location))
                 self._inflight[inflight_key] = task
         try:
             return await task

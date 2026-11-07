@@ -175,7 +175,9 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
             if existing:
                 await db.commit()
                 return
-            async with db.execute("SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM opened_location_tabs") as cur:
+            async with db.execute(
+                "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM opened_location_tabs"
+            ) as cur:
                 row = await cur.fetchone()
             pos = row["next_pos"] if row else 0
             await db.execute(
