@@ -2,6 +2,7 @@ import contextlib
 
 from textual.app import App
 from textual.binding import Binding
+from textual.content import Content
 
 from forecast.application.config import load_settings
 from forecast.application.services.weather_service import DefaultWeatherService
@@ -65,6 +66,18 @@ class ForecastApp(App[None]):
         self.theme = (
             "textual-dark" if self.theme == "textual-light" else "textual-light"
         )
+
+    def format_title(self, title: str, sub_title: str) -> Content:
+        # Render "Synced: HH:MM" with the time in bold.
+        if sub_title.startswith("Synced: "):
+            time_part = sub_title[len("Synced: ") :].strip()
+            return Content.assemble(
+                Content(title),
+                (" — ", "dim"),
+                Content("Synced: ").stylize("dim"),
+                Content(time_part).stylize("bold"),
+            )
+        return super().format_title(title, sub_title)
 
     def on_mount(self) -> None:
         if self._injected_service and self._location is not None:
