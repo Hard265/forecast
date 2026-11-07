@@ -43,7 +43,6 @@ class WeatherHero(Vertical):
         yield Digits("00°", id="temperature", classes="text-center")
         yield Static("", id="summary", classes="text-center")
         yield Static("", id="details", classes="text-center")
-        yield Static("", id="updated", classes="text-center")
 
     async def on_mount(self) -> None:
         try:
@@ -77,9 +76,12 @@ class WeatherHero(Vertical):
         )
         self.query_one("#details", Static).update(details)
 
-        self.query_one("#updated", Static).update(
-            f"[dim]Updated {snapshot.fetched_at.strftime('%H:%M')}[/dim]"
-        )
+        try:
+            self.app.screen.sub_title = (
+                f"Updated {snapshot.fetched_at.strftime('%H:%M')}"
+            )
+        except Exception:
+            pass
 
     def _draw_error(self, message: str) -> None:
         self.query_one("#temperature", Digits).update("--°")
