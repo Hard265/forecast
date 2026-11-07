@@ -30,7 +30,6 @@ class MainScreen(Screen[None]):
         dock: top;
     }
     MainScreen TabbedContent {
-        dock: top;
         height: auto;
     }
     MainScreen Footer {
