@@ -63,6 +63,7 @@ class WeeklyForecast(Container):
         prefs = getattr(self.app, "preferences", None)
         sym = temperature_symbol(prefs)
         table = self.query_one(DataTable)
+        table.expand = True
         table.cursor_type = "none"
         table.add_columns("date", "status", "temp(Min/Max)")
         for daily in snapshot.forecast.daily:
