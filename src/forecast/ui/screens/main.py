@@ -53,15 +53,13 @@ class MainScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with (
-            TabbedContent(initial="weather"),
-            TabPane(self._location.name, id="weather"),
-            VerticalScroll(),
-        ):
-            yield WeatherHero(self._service, self._location)
-            yield DailyForecast(self._service, self._location)
-            yield WeeklyForecast(self._service, self._location)
-            yield WeatherDetails(self._service, self._location)
+        with TabbedContent(initial="weather"):  # noqa: SIM117
+            with TabPane(self._location.name, id="weather"):  # noqa: SIM117
+                with VerticalScroll():
+                    yield WeatherHero(self._service, self._location)
+                    yield DailyForecast(self._service, self._location)
+                    yield WeeklyForecast(self._service, self._location)
+                    yield WeatherDetails(self._service, self._location)
             with TabPane("Pinned", id="pinned"):
                 yield PinPanel(self._service, self)
         yield Footer()
