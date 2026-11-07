@@ -78,6 +78,28 @@ class WeatherHero(Vertical):
             f"feels like {round(convert_temperature(current.temperature.feels_like, prefs))}{sym} "
             f"{current.wind.direction:.0f}° wind {round(current.wind.speed)}"
         )
+        # Countdown to next sunrise or sunset
+        try:
+            now = snapshot.fetched_at
+            daily = snapshot.forecast.daily[0] if snapshot.forecast.daily else None
+            if (
+                daily is not None
+                and daily.sunrise is not None
+                and daily.sunset is not None
+            ):
+                candidates = []
+                if daily.sunrise > now:
+                    candidates.append(("sunrise", daily.sunrise))
+                if daily.sunset > now:
+                    candidates.append(("sunset", daily.sunset))
+                if candidates:
+                    label, target = min(candidates, key=lambda x: x[1])
+                    delta = target - now
+                    mins = int(delta.total_seconds() // 60)
+                    h, m = divmod(mins, 60)
+                    details += f"  · {label} in {h}h{m:02d}m"
+        except Exception:
+            pass
         self.query_one("#details", Static).update(details)
 
     def _draw_error(self, message: str) -> None:

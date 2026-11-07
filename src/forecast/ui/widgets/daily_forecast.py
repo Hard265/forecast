@@ -20,13 +20,13 @@ class DailyForecast(Container):
     }
 
     DailyForecast > #label {
-        margin-bottom: 1;
+        margin-bottom: 0;
         color: $text-muted;
     }
 
     DailyForecast > #precip-sparkline {
-        height: 3;
-        margin-bottom: 1;
+        height: 1;
+        margin-bottom: 0;
     }
 
     HorizontalScroll {
