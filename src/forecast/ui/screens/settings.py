@@ -73,11 +73,15 @@ class SettingsScreen(ModalScreen[None]):
         if repo is not None:
             with contextlib.suppress(Exception):
                 await repo.set_preferences(prefs)
-        screen = getattr(app, "screen", None)
-        if screen is not None and hasattr(screen, "action_refresh"):
-            with contextlib.suppress(Exception):
-                app.run_worker(screen.action_refresh())
+        main_screen = None
+        for scr in getattr(app, "screen_stack", []):
+            if type(scr).__name__ == "MainScreen":
+                main_screen = scr
+                break
         self.dismiss()
+        if main_screen is not None and hasattr(main_screen, "action_refresh"):
+            with contextlib.suppress(Exception):
+                app.run_worker(main_screen.action_refresh())
 
     async def on_button_pressed(self, event) -> None:
         if event.button.id == "cancel":
