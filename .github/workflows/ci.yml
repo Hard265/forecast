@@ -20,12 +20,16 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      - name: Create virtual environment
+        run: uv venv
+
       - name: Install dependencies
-        run: uv pip install --python $(uv python find) -e ".[dev]"
+        run: uv sync --extra dev
 
       - name: Run tests with coverage
         run: |
@@ -43,8 +47,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Create virtual environment
+        run: uv venv
       - name: Install dependencies
-        run: uv pip install --python $(uv python find) -e ".[dev]"
+        run: uv sync --extra dev
       - name: Ruff lint
         run: uv run ruff check src tests
       - name: Ruff format check
@@ -55,7 +66,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Create virtual environment
+        run: uv venv
       - name: Install dependencies
-        run: uv pip install --python $(uv python find) -e ".[dev]"
+        run: uv sync --extra dev
       - name: Pyright typecheck
         run: uv run pyright src
