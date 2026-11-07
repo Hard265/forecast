@@ -40,6 +40,19 @@ class LifeIndex(Grid):
     }
     """
 
+    INDICES = [
+        "Clothing",
+        "Sun Protection",
+        "Physical Activity",
+        "Cold",
+        "Travel",
+        "Respiratory",
+        "Mosquito",
+        "Driving",
+        "Makeup",
+        "Comfort",
+    ]
+
     def __init__(
         self,
         service: DefaultWeatherService,
@@ -50,12 +63,8 @@ class LifeIndex(Grid):
         self._location = location
 
     def compose(self) -> ComposeResult:
-        for label, card_id in [
-            ("Running", "running"),
-            ("Clothing", "clothing"),
-            ("Outdoor", "outdoor"),
-            ("Comfort", "comfort"),
-        ]:
+        for label in self.INDICES:
+            card_id = label.lower().replace(" ", "-")
             card = Vertical()
             card.add_class("card")
             yield card
@@ -74,28 +83,92 @@ class LifeIndex(Grid):
         temp = current.temperature.current
         humidity = current.atmospheric.humidity
         wind = current.wind.speed
+        uv = current.uv_index if current.uv_index is not None else 0.0
+        condition = current.conditions.description.lower()
+        precip = current.precipitation.amount
 
-        if temp < 5:
-            running = "Too cold"
-        elif temp > 30:
-            running = "Too hot"
-        elif wind > 25:
-            running = "Too windy"
-        else:
-            running = "Good"
-
-        if temp < 10:
+        # Clothing
+        if temp < 0:
+            clothing = "Heavy winter"
+        elif temp < 10:
             clothing = "Heavy jacket"
-        elif temp < 20:
+        elif temp < 18:
             clothing = "Light jacket"
-        elif temp < 28:
+        elif temp < 26:
             clothing = "T-shirt"
         else:
             clothing = "Light clothing"
 
-        outdoor = "Poor" if humidity > 80 or temp > 32 or temp < 0 else "Good"
+        # Sun protection factor
+        if uv < 3:
+            sun = "Low"
+        elif uv < 6:
+            sun = "Moderate"
+        elif uv < 8:
+            sun = "High"
+        elif uv < 11:
+            sun = "Very high"
+        else:
+            sun = "Extreme"
 
-        if 18 <= temp <= 26 and humidity < 70:
+        # Physical activity
+        if temp < 0 or temp > 32 or wind > 30 or precip > 2:
+            activity = "Poor"
+        elif temp > 28 or humidity > 80:
+            activity = "Fair"
+        else:
+            activity = "Good"
+
+        # Cold (cold/flu risk)
+        if temp < 5 and humidity > 70:
+            cold = "High risk"
+        elif temp < 10:
+            cold = "Moderate"
+        else:
+            cold = "Low"
+
+        # Travel
+        if "thunder" in condition or "heavy rain" in condition or wind > 35:
+            travel = "Difficult"
+        elif "rain" in condition or "snow" in condition or "fog" in condition:
+            travel = "Caution"
+        else:
+            travel = "Good"
+
+        # Respiratory conditions
+        if humidity > 85 or "fog" in condition:
+            resp = "Poor"
+        elif temp < 5:
+            resp = "Fair"
+        else:
+            resp = "Good"
+
+        # Mosquito
+        if temp > 20 and humidity > 60 and precip == 0:
+            mosquito = "High"
+        elif temp > 15 and humidity > 50:
+            mosquito = "Moderate"
+        else:
+            mosquito = "Low"
+
+        # Driving
+        if "heavy rain" in condition or "snow" in condition or "fog" in condition:
+            driving = "Poor"
+        elif "rain" in condition or "drizzle" in condition:
+            driving = "Caution"
+        else:
+            driving = "Good"
+
+        # Makeup
+        if humidity > 75 or precip > 0:
+            makeup = "Poor"
+        elif temp > 30:
+            makeup = "Fair"
+        else:
+            makeup = "Good"
+
+        # Comfort
+        if 18 <= temp <= 26 and humidity < 70 and wind < 15:
             comfort = "Comfortable"
         elif humidity > 80:
             comfort = "Humid"
@@ -106,11 +179,18 @@ class LifeIndex(Grid):
         else:
             comfort = "Fair"
 
-        self._set("running", running)
-        self._set("clothing", clothing)
-        self._set("outdoor", outdoor)
-        self._set("comfort", comfort)
-
-    def _set(self, card_id: str, text: str) -> None:
-        with contextlib.suppress(Exception):
-            self.query_one(f"#li-{card_id}", Static).update(text)
+        values = {
+            "clothing": clothing,
+            "sun-protection": sun,
+            "physical-activity": activity,
+            "cold": cold,
+            "travel": travel,
+            "respiratory": resp,
+            "mosquito": mosquito,
+            "driving": driving,
+            "makeup": makeup,
+            "comfort": comfort,
+        }
+        for card_id, val in values.items():
+            with contextlib.suppress(Exception):
+                self.query_one(f"#li-{card_id}", Static).update(val)
