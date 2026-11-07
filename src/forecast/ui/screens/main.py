@@ -134,7 +134,9 @@ class MainScreen(Screen[None]):
             else self._location
         )
         # Force a fresh upstream fetch so widgets do not reuse stale cache.
+        self.app.notify("Refreshing weather…")
         await self._service.get_weather_dashboard(loc, refresh=True)
+        self.app.notify("Weather updated", severity="information")
         new_screen = MainScreen(self._service, loc)
         new_screen._prefs_repo = self._prefs_repo
         # Restore any previously opened tabs.

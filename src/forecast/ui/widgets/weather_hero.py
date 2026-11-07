@@ -80,7 +80,7 @@ class WeatherHero(Vertical):
 
         with contextlib.suppress(Exception):
             self.app.screen.sub_title = (
-                f"Updated {snapshot.fetched_at.strftime('%H:%M')}"
+                f"Synced: [b]{snapshot.fetched_at.strftime('%H:%M')}[/b]"
             )
 
     def _draw_error(self, message: str) -> None:
