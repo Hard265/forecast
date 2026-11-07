@@ -75,7 +75,24 @@ class WeatherDetails(Grid):
                 card.add_class("span-2")
             yield card
             card.compose_add_child(Static(label, classes="label"))
-            card.compose_add_child(Digits("--", classes="value", id=f"val-{card_id}"))
+            if card_id == "sun":
+                card.compose_add_child(
+                    Digits("--:--", classes="value", id="val-sunrise")
+                )
+                card.compose_add_child(
+                    Digits("--:--", classes="value", id="val-sunset")
+                )
+            elif card_id == "wind":
+                card.compose_add_child(
+                    Digits("--", classes="value", id="val-wind-speed")
+                )
+                card.compose_add_child(
+                    Digits("--°", classes="value", id="val-wind-dir")
+                )
+            else:
+                card.compose_add_child(
+                    Digits("--", classes="value", id=f"val-{card_id}")
+                )
             card.compose_add_child(Static("", classes="comment", id=f"cmt-{card_id}"))
 
     async def on_mount(self) -> None:
@@ -104,7 +121,14 @@ class WeatherDetails(Grid):
             try:
                 p = daily.precipitation
                 val = getattr(p, "sum", None) or getattr(p, "amount", None) or 0.0
-                set_val("precip", f"{val:.1f} mm")
+                prefs = getattr(self.app, "preferences", None)
+                unit = "mm"
+                if prefs is not None and prefs.precipitation_unit == "inches":
+                    from forecast.application.units import mm_to_inches
+
+                    val = mm_to_inches(val)
+                    unit = "in"
+                set_val("precip", f"{val:.1f} {unit}")
                 set_cmt(
                     "precip",
                     "Light precipitation expected" if val < 2 else "Possible showers",
@@ -131,7 +155,20 @@ class WeatherDetails(Grid):
         wind_dir = getattr(current.wind, "direction", 0)
         gust = getattr(current.wind, "gust", None)
         gust_str = f", gusts {round(gust)}" if gust is not None else ""
-        set_val("wind", f"{wind_spd} {current.wind.unit} {wind_dir:.0f}°{gust_str}")
+        prefs = getattr(self.app, "preferences", None)
+        wind_val = current.wind.speed
+        wind_unit = current.wind.unit
+        if prefs is not None and prefs.wind_speed_unit == "m/s" and wind_unit == "km/h":
+            from forecast.application.units import kmh_to_ms
+
+            wind_val = kmh_to_ms(wind_val)
+            wind_unit = "m/s"
+        with contextlib.suppress(Exception):
+            self.query_one("#val-wind-speed", Digits).update(
+                f"{round(wind_val)} {wind_unit}{gust_str}"
+            )
+        with contextlib.suppress(Exception):
+            self.query_one("#val-wind-dir", Digits).update(f"{wind_dir:.0f}°")
         set_cmt(
             "wind", "Calm" if wind_spd < 12 else "Breezy" if wind_spd < 36 else "Windy"
         )
@@ -172,13 +209,19 @@ class WeatherDetails(Grid):
         set_cmt("air", "Air quality acceptable")
 
         if daily is not None and daily.sunrise is not None and daily.sunset is not None:
-            set_val(
-                "sun",
-                f"{daily.sunrise.strftime('%H:%M')}/{daily.sunset.strftime('%H:%M')}",
-            )
-            set_cmt("sun", "Sunrise/Sunset")
+            with contextlib.suppress(Exception):
+                self.query_one("#val-sunrise", Digits).update(
+                    daily.sunrise.strftime("%H:%M")
+                )
+            with contextlib.suppress(Exception):
+                self.query_one("#val-sunset", Digits).update(
+                    daily.sunset.strftime("%H:%M")
+                )
+            set_cmt("sun", "Sunrise / Sunset")
         else:
-            set_val("sun", "--/--")
+            with contextlib.suppress(Exception):
+                self.query_one("#val-sunrise", Digits).update("--:--")
+                self.query_one("#val-sunset", Digits).update("--:--")
             set_cmt("sun", "")
 
         feels = round(

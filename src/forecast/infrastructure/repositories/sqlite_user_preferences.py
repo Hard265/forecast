@@ -39,6 +39,10 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
                 CREATE TABLE IF NOT EXISTS user_preferences (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
                     primary_location_id TEXT,
+                    temperature_unit TEXT NOT NULL DEFAULT 'celsius',
+                    wind_speed_unit TEXT NOT NULL DEFAULT 'km/h',
+                    precipitation_unit TEXT NOT NULL DEFAULT 'mm',
+                    use_24_hour_clock INTEGER NOT NULL DEFAULT 1,
                     FOREIGN KEY (primary_location_id) REFERENCES saved_locations(id)
                 )
                 """
@@ -57,6 +61,25 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
                 )
                 """
             )
+            # Migrate older schemas: ensure preference columns exist.
+            async with db.execute("PRAGMA table_info(user_preferences)") as cur:
+                cols = {row[1] for row in await cur.fetchall()}
+            if "temperature_unit" not in cols:
+                await db.execute(
+                    "ALTER TABLE user_preferences ADD COLUMN temperature_unit TEXT NOT NULL DEFAULT 'celsius'"
+                )
+            if "wind_speed_unit" not in cols:
+                await db.execute(
+                    "ALTER TABLE user_preferences ADD COLUMN wind_speed_unit TEXT NOT NULL DEFAULT 'km/h'"
+                )
+            if "precipitation_unit" not in cols:
+                await db.execute(
+                    "ALTER TABLE user_preferences ADD COLUMN precipitation_unit TEXT NOT NULL DEFAULT 'mm'"
+                )
+            if "use_24_hour_clock" not in cols:
+                await db.execute(
+                    "ALTER TABLE user_preferences ADD COLUMN use_24_hour_clock INTEGER NOT NULL DEFAULT 1"
+                )
             await db.commit()
 
     async def get_preferences(self) -> UserPreferences:
@@ -64,30 +87,43 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
         async with aiosqlite.connect(self._database_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
-                "SELECT primary_location_id FROM user_preferences WHERE id = 1"
+                "SELECT primary_location_id, temperature_unit, wind_speed_unit, precipitation_unit, use_24_hour_clock FROM user_preferences WHERE id = 1"
             ) as cur:
                 pref_row = await cur.fetchone()
-            if not pref_row or not pref_row["primary_location_id"]:
-                return UserPreferences(primary_location=None)
-            primary_id = pref_row["primary_location_id"]
-            async with db.execute(
-                "SELECT * FROM saved_locations WHERE id = ?",
-                (primary_id,),
-            ) as cur:
-                loc_row = await cur.fetchone()
-            if not loc_row:
-                return UserPreferences(primary_location=None)
-            location = Location(
-                name=loc_row["name"],
-                country=loc_row["country"],
-                region=loc_row["region"],
-                coordinates=Coordinates(
-                    latitude=float(loc_row["latitude"]),
-                    longitude=float(loc_row["longitude"]),
-                ),
-                timezone=loc_row["timezone"],
+            primary_id = pref_row["primary_location_id"] if pref_row else None
+            temp_unit = (
+                pref_row["temperature_unit"] if pref_row else None
+            ) or "celsius"
+            wind_unit = (pref_row["wind_speed_unit"] if pref_row else None) or "km/h"
+            precip_unit = (pref_row["precipitation_unit"] if pref_row else None) or "mm"
+            use_24 = (
+                bool(pref_row["use_24_hour_clock"]) if pref_row is not None else True
             )
-            return UserPreferences(primary_location=location)
+            location = None
+            if primary_id:
+                async with db.execute(
+                    "SELECT * FROM saved_locations WHERE id = ?",
+                    (primary_id,),
+                ) as cur:
+                    loc_row = await cur.fetchone()
+                if loc_row:
+                    location = Location(
+                        name=loc_row["name"],
+                        country=loc_row["country"],
+                        region=loc_row["region"],
+                        coordinates=Coordinates(
+                            latitude=float(loc_row["latitude"]),
+                            longitude=float(loc_row["longitude"]),
+                        ),
+                        timezone=loc_row["timezone"],
+                    )
+            return UserPreferences(
+                primary_location=location,
+                temperature_unit=temp_unit,
+                wind_speed_unit=wind_unit,
+                precipitation_unit=precip_unit,
+                use_24_hour_clock=use_24,
+            )
 
     async def set_primary_location(self, location: Location) -> None:
         await self.initialize()
@@ -127,6 +163,79 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
                 (loc_id,),
             )
             await db.commit()
+
+    async def set_preferences(self, preferences: UserPreferences) -> None:
+        await self.initialize()
+        loc_id = None
+        if preferences.primary_location is not None:
+            loc = preferences.primary_location
+            loc_id = f"{loc.name.lower()}:{loc.country.lower()}:{loc.coordinates.latitude:.4f}:{loc.coordinates.longitude:.4f}"
+            created_at = datetime.now(UTC).isoformat()
+            async with aiosqlite.connect(self._database_path) as db:
+                await db.execute(
+                    """
+                    INSERT INTO saved_locations (id, name, country, region, latitude, longitude, timezone, is_primary, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        name=excluded.name,
+                        country=excluded.country,
+                        region=excluded.region,
+                        latitude=excluded.latitude,
+                        longitude=excluded.longitude,
+                        timezone=excluded.timezone,
+                        is_primary=1
+                    """,
+                    (
+                        loc_id,
+                        loc.name,
+                        loc.country,
+                        loc.region,
+                        loc.coordinates.latitude,
+                        loc.coordinates.longitude,
+                        loc.timezone,
+                        created_at,
+                    ),
+                )
+                await db.execute(
+                    """
+                    INSERT INTO user_preferences (id, primary_location_id, temperature_unit, wind_speed_unit, precipitation_unit, use_24_hour_clock)
+                    VALUES (1, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        primary_location_id=COALESCE(excluded.primary_location_id, user_preferences.primary_location_id),
+                        temperature_unit=excluded.temperature_unit,
+                        wind_speed_unit=excluded.wind_speed_unit,
+                        precipitation_unit=excluded.precipitation_unit,
+                        use_24_hour_clock=excluded.use_24_hour_clock
+                    """,
+                    (
+                        loc_id,
+                        preferences.temperature_unit,
+                        preferences.wind_speed_unit,
+                        preferences.precipitation_unit,
+                        1 if preferences.use_24_hour_clock else 0,
+                    ),
+                )
+                await db.commit()
+        else:
+            async with aiosqlite.connect(self._database_path) as db:
+                await db.execute(
+                    """
+                    INSERT INTO user_preferences (id, temperature_unit, wind_speed_unit, precipitation_unit, use_24_hour_clock)
+                    VALUES (1, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        temperature_unit=excluded.temperature_unit,
+                        wind_speed_unit=excluded.wind_speed_unit,
+                        precipitation_unit=excluded.precipitation_unit,
+                        use_24_hour_clock=excluded.use_24_hour_clock
+                    """,
+                    (
+                        preferences.temperature_unit,
+                        preferences.wind_speed_unit,
+                        preferences.precipitation_unit,
+                        1 if preferences.use_24_hour_clock else 0,
+                    ),
+                )
+                await db.commit()
 
     async def clear_preferences(self) -> None:
         await self.initialize()

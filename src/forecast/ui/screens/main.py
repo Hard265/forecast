@@ -9,7 +9,9 @@ from textual.widgets import Footer, Header, TabbedContent, TabPane
 from forecast.application.repositories.user_preferences import UserPreferencesRepository
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Location
+from forecast.ui.screens.settings import SettingsScreen
 from forecast.ui.widgets.daily_forecast import DailyForecast
+from forecast.ui.widgets.life_index import LifeIndex
 from forecast.ui.widgets.pin_panel import PinPanel
 from forecast.ui.widgets.weather_details import WeatherDetails
 from forecast.ui.widgets.weather_hero import WeatherHero
@@ -19,7 +21,7 @@ from forecast.ui.widgets.weekly_forecast import WeeklyForecast
 class MainScreen(Screen[None]):
     TITLE = "Forecast"
 
-    BINDINGS = [("r", "refresh", "Refresh")]
+    BINDINGS = [("r", "refresh", "Refresh"), ("s", "settings", "Settings")]
 
     DEFAULT_CSS = """
     MainScreen {
@@ -29,7 +31,6 @@ class MainScreen(Screen[None]):
         dock: top;
     }
     MainScreen TabbedContent {
-        dock: top;
         height: auto;
     }
     MainScreen Footer {
@@ -60,6 +61,7 @@ class MainScreen(Screen[None]):
                     yield DailyForecast(self._service, self._location)
                     yield WeeklyForecast(self._service, self._location)
                     yield WeatherDetails(self._service, self._location)
+                    yield LifeIndex(self._service, self._location)
             with TabPane("Pinned", id="pinned"):
                 yield PinPanel(self._service, self)
         yield Footer()
@@ -103,6 +105,7 @@ class MainScreen(Screen[None]):
             vs.compose_add_child(daily)
             vs.compose_add_child(weekly)
             vs.compose_add_child(details)
+            vs.compose_add_child(LifeIndex(self._service, location))
         pane.compose_add_child(vs)
         try:
             tabs = self.query_one(TabbedContent)
@@ -134,12 +137,16 @@ class MainScreen(Screen[None]):
             else self._location
         )
         # Force a fresh upstream fetch so widgets do not reuse stale cache.
+        self.app.notify("Refreshing weather...")
         await self._service.get_weather_dashboard(loc, refresh=True)
         new_screen = MainScreen(self._service, loc)
         new_screen._prefs_repo = self._prefs_repo
-        # Restore any previously opened tabs.
         for tab_loc in self._location_tabs.values():
             if tab_loc is not loc:
                 new_screen.add_location_tab(tab_loc, persist=False)
         self.app.pop_screen()
         self.app.push_screen(new_screen)
+        self.app.notify("Weather updated")
+
+    def action_settings(self) -> None:
+        self.app.push_screen(SettingsScreen())

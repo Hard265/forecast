@@ -104,7 +104,7 @@ async def test_weather_hero_renders_temperature(app):
     async with app.run_test() as pilot:
         await pilot.pause()
         digits = app.screen.query_one("#temperature", Digits)
-        assert digits.value == "26°"
+        assert digits.value == "26°C"
 
 
 async def test_weekly_forecast_populates_table(app):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.containers import Container, HorizontalScroll, Vertical
-from textual.widgets import Static
+from textual.widgets import Sparkline, Static
 
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.errors import ForecastError
@@ -20,8 +20,14 @@ class DailyForecast(Container):
     }
 
     DailyForecast > #label {
-        margin-bottom: 1;
+        margin-bottom: 0;
         color: $text-muted;
+    }
+
+    DailyForecast > #precip-sparkline {
+        height: 3;
+        padding: 1 0;
+        margin-bottom: 0;
     }
 
     HorizontalScroll {
@@ -45,6 +51,7 @@ class DailyForecast(Container):
 
     def compose(self) -> ComposeResult:
         yield Static("Next 24 Hours", id="label")
+        yield Sparkline([], id="precip-sparkline")
         with HorizontalScroll():
             for index in range(24):
                 yield DailyForecastItem(index)
@@ -52,6 +59,10 @@ class DailyForecast(Container):
     async def on_mount(self) -> None:
         try:
             snapshot = await self._service.get_weather_dashboard(self._location)
+            sparkline = self.query_one("#precip-sparkline", Sparkline)
+            sparkline.data = [
+                h.precipitation_probability for h in snapshot.forecast.hourly[:24]
+            ]
             for index, hourly in enumerate(snapshot.forecast.hourly[:24]):
                 item = self.query_one(f"#hour-{index}", DailyForecastItem)
                 item.populate(hourly)
@@ -80,12 +91,15 @@ class DailyForecastItem(Vertical):
         yield Static("[bold]00°[/bold]", classes="temp")
 
     def populate(self, hourly) -> None:
+        from forecast.application.units import convert_temperature, temperature_symbol
+
         self._hourly = hourly
+        prefs = getattr(self.app, "preferences", None)
+        temp = convert_temperature(hourly.temperature, prefs)
+        sym = temperature_symbol(prefs)
         self.query_one(".time", Static).update(hourly.timestamp.strftime("%H:%M"))
         self.query_one(".icon", Static).update(self._icon_for(hourly.condition))
-        self.query_one(".temp", Static).update(
-            f"[bold]{round(hourly.temperature)}°[/bold]"
-        )
+        self.query_one(".temp", Static).update(f"[bold]{round(temp)}{sym}[/bold]")
 
     @staticmethod
     def _icon_for(condition) -> str:

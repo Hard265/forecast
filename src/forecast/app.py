@@ -2,10 +2,12 @@ import contextlib
 
 from textual.app import App
 from textual.binding import Binding
+from textual.content import Content
 
 from forecast.application.config import load_settings
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Location
+from forecast.domain.models.preferences import UserPreferences
 from forecast.infrastructure.composition_root import (
     create_geocoding_client,
     create_user_preferences_repository,
@@ -39,6 +41,7 @@ class ForecastApp(App[None]):
         self._settings = load_settings()
         self._service = service or create_weather_service(self._settings)
         self._location: Location | None = location
+        self._preferences = UserPreferences()
         self._prefs_repo = create_user_preferences_repository(self._settings)
         self._geocoding = create_geocoding_client(self._settings)
         self._injected_service = service is not None
@@ -51,11 +54,30 @@ class ForecastApp(App[None]):
     def location(self) -> Location | None:
         return self._location
 
+    @property
+    def preferences(self) -> UserPreferences:
+        return self._preferences
+
+    def set_preferences(self, prefs: UserPreferences) -> None:
+        self._preferences = prefs
+
     def action_toggle_dark(self) -> None:
         """An action to toggle dark mode."""
         self.theme = (
             "textual-dark" if self.theme == "textual-light" else "textual-light"
         )
+
+    def format_title(self, title: str, sub_title: str) -> Content:
+        # Render "Synced: HH:MM" with the time in bold.
+        if sub_title.startswith("Synced: "):
+            time_part = sub_title[len("Synced: ") :].strip()
+            return Content.assemble(
+                Content(title),
+                (" — ", "dim"),
+                Content("Synced: ").stylize("dim"),
+                Content(time_part).stylize("bold"),
+            )
+        return super().format_title(title, sub_title)
 
     def on_mount(self) -> None:
         if self._injected_service and self._location is not None:
@@ -79,6 +101,7 @@ class ForecastApp(App[None]):
                 self.push_screen(screen)
                 return
             prefs = await self._prefs_repo.get_preferences()
+            self._preferences = prefs
             if prefs.primary_location is not None:
                 screen = MainScreen(self._service, prefs.primary_location)
                 screen._prefs_repo = self._prefs_repo
