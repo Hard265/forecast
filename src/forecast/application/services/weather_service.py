@@ -1,5 +1,3 @@
-import asyncio
-from datetime import UTC, datetime
 
 from forecast.application.repositories.weather_repository import WeatherRepository
 from forecast.domain.models.app import WeatherSnapshot
@@ -40,14 +38,5 @@ class DefaultWeatherService:
         *,
         refresh: bool = False,
     ) -> WeatherSnapshot:
-        current, forecast, alerts = await asyncio.gather(
-            self._repository.get_current(location, force_refresh=refresh),
-            self._repository.get_forecast(location, force_refresh=refresh),
-            self._repository.get_alerts(location, force_refresh=refresh),
-        )
-        return WeatherSnapshot(
-            current=current,
-            forecast=forecast,
-            alerts=alerts,
-            fetched_at=datetime.now(UTC),
-        )
+        snapshot = await self._repository.get_snapshot(location, force_refresh=refresh)
+        return snapshot

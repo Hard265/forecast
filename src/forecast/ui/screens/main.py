@@ -1,3 +1,5 @@
+import hashlib
+
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.screen import Screen
@@ -72,7 +74,9 @@ class MainScreen(Screen[None]):
             self.add_location_tab(loc, persist=False)
 
     def add_location_tab(self, location: Location, persist: bool = True) -> None:
-        tab_id = f"loc-{location.name.lower().replace(' ', '-')}-{hash((location.name, location.country, location.coordinates.latitude, location.coordinates.longitude)) % 100000}"
+        stable = f"{location.name}|{location.country}|{location.coordinates.latitude}|{location.coordinates.longitude}"
+        digest = hashlib.sha1(stable.encode()).hexdigest()[:8]
+        tab_id = f"loc-{location.name.lower().replace(' ', '-')}-{digest}"
         if tab_id in self._location_tabs:
             try:
                 tabs = self.query_one(TabbedContent)

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 
 from forecast.domain.models.alerts import WeatherAlert
 from forecast.domain.models.app import WeatherSnapshot
@@ -11,7 +11,7 @@ from forecast.infrastructure.providers.open_meteo.provider import OpenMeteoProvi
 
 
 def _now() -> datetime:
-    return datetime.now()
+    return datetime.now(UTC)
 
 
 class DefaultWeatherRepository:
@@ -34,6 +34,8 @@ class DefaultWeatherRepository:
             raise ValueError("forecast_ttl_seconds must be positive")
         self._current_ttl = current_ttl_seconds
         self._forecast_ttl = forecast_ttl_seconds
+        self._inflight: dict[str, asyncio.Task[tuple[CurrentWeather, Forecast, tuple[WeatherAlert, ...]]]] = {}
+        self._lock = asyncio.Lock()
 
     async def get_current(
         self,
@@ -42,15 +44,14 @@ class DefaultWeatherRepository:
         force_refresh: bool = False,
     ) -> CurrentWeather:
         key = self._current_cache_key(location)
-
         if not force_refresh:
             cached = await self._cache.get(key)
             if cached is not None and not cached.is_expired:
                 return cached.data  # type: ignore[no-any-return]
-
-        weather = await self._provider.fetch_current(location)
-        await self._cache.set(key, weather, self._current_ttl)
-        return weather
+        current, forecast, _alerts = await self._fetch_snapshot(location, force_refresh=force_refresh)
+        await self._cache.set(key, current, self._current_ttl)
+        await self._cache.set(self._forecast_cache_key(location), forecast, self._forecast_ttl)
+        return current
 
     async def get_forecast(
         self,
@@ -59,13 +60,12 @@ class DefaultWeatherRepository:
         force_refresh: bool = False,
     ) -> Forecast:
         key = self._forecast_cache_key(location)
-
         if not force_refresh:
             cached = await self._cache.get(key)
             if cached is not None and not cached.is_expired:
                 return cached.data  # type: ignore[no-any-return]
-
-        forecast = await self._provider.fetch_forecast(location)
+        current, forecast, _alerts = await self._fetch_snapshot(location, force_refresh=force_refresh)
+        await self._cache.set(self._current_cache_key(location), current, self._current_ttl)
         await self._cache.set(key, forecast, self._forecast_ttl)
         return forecast
 
@@ -75,7 +75,8 @@ class DefaultWeatherRepository:
         *,
         force_refresh: bool = False,
     ) -> tuple[WeatherAlert, ...]:
-        return await self._provider.fetch_alerts(location)
+        # Open-Meteo exposes no alert endpoint in this client; alerts are empty.
+        return ()
 
     async def get_snapshot(
         self,
@@ -83,17 +84,57 @@ class DefaultWeatherRepository:
         *,
         force_refresh: bool = False,
     ) -> WeatherSnapshot:
-        current, forecast, alerts = await asyncio.gather(
-            self.get_current(location, force_refresh=force_refresh),
-            self.get_forecast(location, force_refresh=force_refresh),
-            self.get_alerts(location, force_refresh=force_refresh),
-        )
+        current_key = self._current_cache_key(location)
+        forecast_key = self._forecast_cache_key(location)
+
+        cached_current = None
+        cached_forecast = None
+        if not force_refresh:
+            cc = await self._cache.get(current_key)
+            if cc is not None and not cc.is_expired:
+                cached_current = cc.data
+            cf = await self._cache.get(forecast_key)
+            if cf is not None and not cf.is_expired:
+                cached_forecast = cf.data
+
+        if cached_current is not None and cached_forecast is not None:
+            return WeatherSnapshot(
+                current=cached_current,  # type: ignore[arg-type]
+                forecast=cached_forecast,  # type: ignore[arg-type]
+                alerts=(),
+                fetched_at=_now(),
+            )
+
+        current, forecast, alerts = await self._fetch_snapshot(location, force_refresh=force_refresh)
+        await self._cache.set(current_key, current, self._current_ttl)
+        await self._cache.set(forecast_key, forecast, self._forecast_ttl)
         return WeatherSnapshot(
             current=current,
             forecast=forecast,
             alerts=alerts,
             fetched_at=_now(),
         )
+
+    async def _fetch_snapshot(
+        self,
+        location: Location,
+        *,
+        force_refresh: bool = False,
+    ) -> tuple[CurrentWeather, Forecast, tuple[WeatherAlert, ...]]:
+        inflight_key = f"{location.coordinates.latitude}:{location.coordinates.longitude}:{int(force_refresh)}"
+        async with self._lock:
+            task = self._inflight.get(inflight_key)
+            if task is None or task.done():
+                task = asyncio.create_task(
+                    self._provider.fetch_snapshot(location)
+                )
+                self._inflight[inflight_key] = task
+        try:
+            return await task
+        finally:
+            async with self._lock:
+                if self._inflight.get(inflight_key) is task:
+                    del self._inflight[inflight_key]
 
     def _current_cache_key(self, location: Location) -> str:
         return (

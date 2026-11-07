@@ -59,8 +59,8 @@ async def test_service_dashboard_uses_single_provider_trip(
     provider, calls = open_meteo_provider
     service = _service(open_meteo_provider)
     await service.get_weather_dashboard(location)
-    # current + forecast = 2 HTTP calls (alerts bypass the HTTP client).
-    assert len(calls) == 2
+    # A single upstream request now provides current + forecast.
+    assert len(calls) == 1
 
 
 async def test_service_refresh_bypasses_cache(open_meteo_provider, location):
