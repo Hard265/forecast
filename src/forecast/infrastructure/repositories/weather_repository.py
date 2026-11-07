@@ -99,20 +99,24 @@ class DefaultWeatherRepository:
 
         cached_current = None
         cached_forecast = None
+        cached_fetched_at = None
         if not force_refresh:
             cc = await self._cache.get(current_key)
             if cc is not None and not cc.is_expired:
                 cached_current = cc.data
+                cached_fetched_at = cc.fetched_at
             cf = await self._cache.get(forecast_key)
             if cf is not None and not cf.is_expired:
                 cached_forecast = cf.data
+                if cached_fetched_at is None:
+                    cached_fetched_at = cf.fetched_at
 
         if cached_current is not None and cached_forecast is not None:
             return WeatherSnapshot(
                 current=cached_current,  # type: ignore[arg-type]
                 forecast=cached_forecast,  # type: ignore[arg-type]
                 alerts=(),
-                fetched_at=_now(),
+                fetched_at=cached_fetched_at or _now(),
             )
 
         current, forecast, alerts = await self._fetch_snapshot(
