@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
+from typing import TYPE_CHECKING, cast
+
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.screen import ModalScreen
@@ -9,12 +12,17 @@ from textual.widgets import Button, Label, Select, Static
 
 from forecast.domain.models.preferences import UserPreferences
 
+if TYPE_CHECKING:
+    from forecast.app import ForecastApp
+
 
 class SettingsScreen(ModalScreen[None]):
     BINDINGS = [("escape", "dismiss", "Close")]
 
     def compose(self) -> ComposeResult:
-        prefs = self.app.preferences
+        app = self.app
+        assert isinstance(app, ForecastApp)
+        prefs = app.preferences
         with Vertical(id="settings-container"):
             yield Label("Settings", id="settings-title")
             yield Static("Temperature unit")
@@ -43,21 +51,20 @@ class SettingsScreen(ModalScreen[None]):
             self.dismiss()
             return
         if event.button.id == "save":
+            app = cast("ForecastApp", self.app)
             temp = self.query_one("#temp-unit", Select).value
             wind = self.query_one("#wind-unit", Select).value
             precip = self.query_one("#precip-unit", Select).value
             prefs = UserPreferences(
-                primary_location=self.app.preferences.primary_location,
+                primary_location=app.preferences.primary_location,
                 temperature_unit=str(temp),
                 wind_speed_unit=str(wind),
                 precipitation_unit=str(precip),
-                use_24_hour_clock=self.app.preferences.use_24_hour_clock,
+                use_24_hour_clock=app.preferences.use_24_hour_clock,
             )
-            self.app.set_preferences(prefs)
-            repo = getattr(self.app, "_prefs_repo", None)
+            app.set_preferences(prefs)
+            repo = getattr(app, "_prefs_repo", None)
             if repo is not None:
-                try:
+                with contextlib.suppress(Exception):
                     await repo.set_preferences(prefs)
-                except Exception:
-                    pass
             self.dismiss()

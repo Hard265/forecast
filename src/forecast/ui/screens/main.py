@@ -9,12 +9,12 @@ from textual.widgets import Footer, Header, TabbedContent, TabPane
 from forecast.application.repositories.user_preferences import UserPreferencesRepository
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Location
+from forecast.ui.screens.settings import SettingsScreen
 from forecast.ui.widgets.daily_forecast import DailyForecast
 from forecast.ui.widgets.pin_panel import PinPanel
 from forecast.ui.widgets.weather_details import WeatherDetails
 from forecast.ui.widgets.weather_hero import WeatherHero
 from forecast.ui.widgets.weekly_forecast import WeeklyForecast
-from forecast.ui.screens.settings import SettingsScreen
 
 
 class MainScreen(Screen[None]):

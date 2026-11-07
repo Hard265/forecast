@@ -91,10 +91,14 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
             ) as cur:
                 pref_row = await cur.fetchone()
             primary_id = pref_row["primary_location_id"] if pref_row else None
-            temp_unit = (pref_row["temperature_unit"] if pref_row else None) or "celsius"
+            temp_unit = (
+                pref_row["temperature_unit"] if pref_row else None
+            ) or "celsius"
             wind_unit = (pref_row["wind_speed_unit"] if pref_row else None) or "km/h"
             precip_unit = (pref_row["precipitation_unit"] if pref_row else None) or "mm"
-            use_24 = bool(pref_row["use_24_hour_clock"]) if pref_row is not None else True
+            use_24 = (
+                bool(pref_row["use_24_hour_clock"]) if pref_row is not None else True
+            )
             location = None
             if primary_id:
                 async with db.execute(
@@ -166,7 +170,7 @@ class SqliteUserPreferencesRepository(UserPreferencesRepository):
         if preferences.primary_location is not None:
             loc = preferences.primary_location
             loc_id = f"{loc.name.lower()}:{loc.country.lower()}:{loc.coordinates.latitude:.4f}:{loc.coordinates.longitude:.4f}"
-            created_at = datetime.now(timezone.utc).isoformat()
+            created_at = datetime.now(UTC).isoformat()
             async with aiosqlite.connect(self._database_path) as db:
                 await db.execute(
                     """
