@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Digits, Static
@@ -76,12 +78,10 @@ class WeatherHero(Vertical):
         )
         self.query_one("#details", Static).update(details)
 
-        try:
+        with contextlib.suppress(Exception):
             self.app.screen.sub_title = (
                 f"Updated {snapshot.fetched_at.strftime('%H:%M')}"
             )
-        except Exception:
-            pass
 
     def _draw_error(self, message: str) -> None:
         self.query_one("#temperature", Digits).update("--°")
