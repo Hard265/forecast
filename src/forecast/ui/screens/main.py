@@ -11,6 +11,7 @@ from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Location
 from forecast.ui.screens.settings import SettingsScreen
 from forecast.ui.widgets.daily_forecast import DailyForecast
+from forecast.ui.widgets.life_index import LifeIndex
 from forecast.ui.widgets.pin_panel import PinPanel
 from forecast.ui.widgets.weather_details import WeatherDetails
 from forecast.ui.widgets.weather_hero import WeatherHero
@@ -60,6 +61,7 @@ class MainScreen(Screen[None]):
                     yield DailyForecast(self._service, self._location)
                     yield WeeklyForecast(self._service, self._location)
                     yield WeatherDetails(self._service, self._location)
+                    yield LifeIndex(self._service, self._location)
             with TabPane("Pinned", id="pinned"):
                 yield PinPanel(self._service, self)
         yield Footer()
@@ -103,6 +105,7 @@ class MainScreen(Screen[None]):
             vs.compose_add_child(daily)
             vs.compose_add_child(weekly)
             vs.compose_add_child(details)
+            vs.compose_add_child(LifeIndex(self._service, location))
         pane.compose_add_child(vs)
         try:
             tabs = self.query_one(TabbedContent)
