@@ -37,6 +37,8 @@ class WeatherHero(Vertical):
             self._draw(snapshot)
         except ForecastError as exc:
             self._draw_error(str(exc))
+        except Exception as exc:  # pragma: no cover - defensive UI boundary
+            self._draw_error(str(exc))
 
     def _draw(self, snapshot) -> None:
         current = snapshot.current

@@ -1,5 +1,5 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from forecast.domain.models.atmospheric import AtmosphericConditions
 from forecast.domain.models.conditions import WeatherCondition, WeatherDescription
@@ -10,6 +10,20 @@ from forecast.domain.models.precipitation import Precipitation
 from forecast.domain.models.temperature import Temperature
 from forecast.domain.models.wind import Wind
 from forecast.infrastructure.providers.open_meteo.dto import OpenMeteoResponseDTO
+
+
+def _resolve_timezone(name: str):
+    """Resolve an IANA zone name, falling back to UTC if unavailable.
+
+    Minimal Linux distributions (Termux, Alpine, distroless) ship without a
+    system tz database, so ``ZoneInfo`` raises ``ZoneInfoNotFoundError``. We
+    treat that as a recoverable condition and fall back to UTC rather than
+    crashing the whole TUI.
+    """
+    try:
+        return ZoneInfo(name)
+    except ZoneInfoNotFoundError:
+        return UTC
 
 
 class OpenMeteoMapper:
@@ -49,7 +63,7 @@ class OpenMeteoMapper:
     ) -> CurrentWeather:
         current = response.current
         observed_at = datetime.fromisoformat(current.time).replace(
-            tzinfo=ZoneInfo(response.timezone)
+            tzinfo=_resolve_timezone(response.timezone)
         )
 
         return CurrentWeather(
@@ -84,7 +98,7 @@ class OpenMeteoMapper:
         response: OpenMeteoResponseDTO,
         location: Location,
     ) -> Forecast:
-        tz = ZoneInfo(response.timezone)
+        tz = _resolve_timezone(response.timezone)
         hourly = response.hourly
         daily = response.daily
 

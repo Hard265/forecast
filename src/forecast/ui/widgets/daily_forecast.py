@@ -58,6 +58,8 @@ class DailyForecast(Container):
         except ForecastError:
             # WeatherHero already surfaces the error; leave the strip empty.
             pass
+        except Exception:  # pragma: no cover - defensive UI boundary
+            pass
 
 
 class DailyForecastItem(Vertical):

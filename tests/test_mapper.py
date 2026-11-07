@@ -1,6 +1,6 @@
 """Tests for the Open-Meteo DTO and mapper."""
 
-from zoneinfo import ZoneInfo
+from datetime import UTC
 
 from forecast.domain.models.conditions import WeatherCondition
 from forecast.domain.models.location import Coordinates, Location
@@ -8,7 +8,10 @@ from forecast.infrastructure.providers.open_meteo.dto import (
     OpenMeteoCurrentDTO,
     OpenMeteoResponseDTO,
 )
-from forecast.infrastructure.providers.open_meteo.mapper import OpenMeteoMapper
+from forecast.infrastructure.providers.open_meteo.mapper import (
+    OpenMeteoMapper,
+    _resolve_timezone,
+)
 
 
 def _location() -> Location:
@@ -54,7 +57,7 @@ def test_mapper_current_weather(sample_payload, location):
     assert current.wind.unit == "km/h"
     assert current.atmospheric.pressure == 1010.0
     assert current.precipitation.amount == 0.0
-    assert current.observed_at.tzinfo == ZoneInfo("Africa/Blantyre")
+    assert current.observed_at.tzinfo == _resolve_timezone("Africa/Blantyre")
 
 
 def test_mapper_unknown_weather_code(sample_payload, location):
@@ -117,7 +120,10 @@ def test_mapper_to_forecast(sample_payload, location):
     assert first_hourly.temperature == 26.0
     assert first_hourly.precipitation_probability == 0.1
     assert first_hourly.humidity == 60.0
-    assert first_hourly.timestamp.tzinfo == ZoneInfo("Africa/Blantyre")
+    # The mapper resolves the IANA zone when available and falls back to UTC
+    # on minimal systems that ship without a tz database.
+    expected_tz = _resolve_timezone("Africa/Blantyre")
+    assert first_hourly.timestamp.tzinfo == expected_tz
 
     daily = forecast.daily[0]
     assert daily.temperature.minimum == 20.0
@@ -125,6 +131,19 @@ def test_mapper_to_forecast(sample_payload, location):
     assert daily.uv_index == 6.0
     assert daily.precipitation.probability == 0.2
     assert daily.precipitation.amount == 0.0
-    assert daily.sunrise.tzinfo == ZoneInfo("Africa/Blantyre")
-    assert daily.sunset.tzinfo == ZoneInfo("Africa/Blantyre")
-    assert forecast.generated_at.tzinfo == ZoneInfo("Africa/Blantyre")
+    assert daily.sunrise.tzinfo == expected_tz
+    assert daily.sunset.tzinfo == expected_tz
+    assert forecast.generated_at.tzinfo == expected_tz
+
+
+def test_resolve_timezone_falls_back_to_utc_for_unknown_zones():
+    # An IANA key that does not exist on the system tz database should fall
+    # back to UTC rather than raising.
+    tz = _resolve_timezone("Not/A/RealZone")
+    assert tz is UTC
+
+
+def test_resolve_timezone_returns_zoneinfo_when_available():
+    tz = _resolve_timezone("Africa/Blantyre")
+    # On systems with a tz database this is a ZoneInfo; otherwise UTC.
+    assert tz in (UTC, __import__("zoneinfo").ZoneInfo("Africa/Blantyre"))
