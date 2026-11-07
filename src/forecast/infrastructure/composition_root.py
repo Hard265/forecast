@@ -10,13 +10,18 @@ import os
 from pathlib import Path
 
 from forecast.application.config import Settings, load_settings
+from forecast.application.repositories.user_preferences import UserPreferencesRepository
 from forecast.application.services.weather_service import DefaultWeatherService
 from forecast.domain.models.location import Coordinates, Location
 from forecast.infrastructure.cache.memory import MemoryWeatherCache
 from forecast.infrastructure.cache.sqlite import SQLiteWeatherCache
 from forecast.infrastructure.cache.tiered import TieredWeatherCache
 from forecast.infrastructure.providers.open_meteo.client import OpenMeteoClient
+from forecast.infrastructure.providers.open_meteo.geocoding import GeocodingClient
 from forecast.infrastructure.providers.open_meteo.provider import OpenMeteoProvider
+from forecast.infrastructure.repositories.sqlite_user_preferences import (
+    SqliteUserPreferencesRepository,
+)
 from forecast.infrastructure.repositories.weather_repository import (
     DefaultWeatherRepository,
 )
@@ -54,6 +59,18 @@ def create_weather_service(
     )
 
     return DefaultWeatherService(repository=repository)
+
+
+def create_user_preferences_repository(
+    settings: Settings | None = None,
+) -> UserPreferencesRepository:
+    settings = settings or load_settings()
+    return SqliteUserPreferencesRepository(database_path=settings.sqlite_cache_path)
+
+
+def create_geocoding_client(settings: Settings | None = None) -> GeocodingClient:
+    settings = settings or load_settings()
+    return GeocodingClient(base_url=settings.geocoding_base_url)
 
 
 def default_location(settings: Settings | None = None) -> Location:

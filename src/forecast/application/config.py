@@ -50,6 +50,9 @@ class Settings:
     open_meteo_max_retries: int
     open_meteo_backoff_seconds: float
 
+    geocoding_base_url: str
+    bundled_cities_path: str
+
     cache_dir: str
     sqlite_cache_path: str
     current_cache_ttl_seconds: int
@@ -75,6 +78,11 @@ def load_settings() -> Settings:
         ),
         open_meteo_max_retries=_env_int("OPEN_METEO_MAX_RETRIES", 3),
         open_meteo_backoff_seconds=_env_float("OPEN_METEO_BACKOFF_SECONDS", 0.5),
+        geocoding_base_url=_env(
+            "OPEN_METEO_GEOCODING_BASE_URL",
+            "https://geocoding-api.open-meteo.com/v1/search",
+        ),
+        bundled_cities_path=_env("FORECAST_BUNDLED_CITIES_PATH", "data/cities.json"),
         cache_dir=_env("FORECAST_CACHE_DIR", "data"),
         sqlite_cache_path=_env("FORECAST_SQLITE_CACHE_PATH", "data/weather.db"),
         current_cache_ttl_seconds=_env_int("FORECAST_CURRENT_TTL_SECONDS", 600),

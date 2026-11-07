@@ -24,6 +24,12 @@ class WeeklyForecast(Container):
         color: $text-muted;
     }
 
+    WeeklyForecast DataTable {
+        width: 100%;
+        scrollbar-size-vertical: 2;
+        scrollbar-size-horizontal: 1;
+    }
+
     DataTable > .datatable--odd-row  { background: $surface; }
     DataTable > * { background: $panel; }
     """

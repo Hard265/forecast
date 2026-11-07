@@ -13,6 +13,19 @@ class WeatherHero(Vertical):
     DEFAULT_CSS = """
     WeatherHero {
         height: auto;
+        align: center middle;
+        padding: 4 4;
+        width: 100%;
+    }
+
+    WeatherHero Digits {
+        width: 100%;
+        text-align: center;
+    }
+
+    WeatherHero Static {
+        width: 100%;
+        text-align: center;
     }
     """
 
@@ -24,7 +37,7 @@ class WeatherHero(Vertical):
         super().__init__()
         self._service = service
         self._location = location
-        self.classes = "p-md"
+        self.add_class("p-md")
 
     def compose(self) -> ComposeResult:
         yield Digits("00°", id="temperature", classes="text-center")
